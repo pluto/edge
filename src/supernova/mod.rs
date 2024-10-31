@@ -258,6 +258,22 @@ where
         (circuit_shapes, aux_params)
     }
 
+    /// Returns just the [`AuxParams`] portion of [`PublicParams`] from a reference to [`PublicParams`].
+    pub fn aux_params(&self) -> AuxParams<E1> {
+        AuxParams {
+            ro_consts_primary: self.ro_consts_primary.clone(),
+            ro_consts_circuit_primary: self.ro_consts_circuit_primary.clone(),
+            ck_primary: self.ck_primary.clone(),
+            augmented_circuit_params_primary: self.augmented_circuit_params_primary.clone(),
+            ro_consts_secondary: self.ro_consts_secondary.clone(),
+            ro_consts_circuit_secondary: self.ro_consts_circuit_secondary.clone(),
+            ck_secondary: self.ck_secondary.clone(),
+            circuit_shape_secondary: self.circuit_shape_secondary.clone(),
+            augmented_circuit_params_secondary: self.augmented_circuit_params_secondary.clone(),
+            digest: self.digest(),
+        }
+    }
+
     /// Create a [`PublicParams`] from a vector of raw [`R1CSWithArity`] and
     /// auxiliary params.
     pub fn from_parts(circuit_shapes: Vec<R1CSWithArity<E1>>, aux_params: AuxParams<E1>) -> Self {
