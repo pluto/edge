@@ -1,11 +1,11 @@
 [package]
-name = "proving_ground"
+name = "client-side-prover"
 version = "0.1.0"
 authors = ["Pluto Engineering"]
 edition = "2021"
 description = "Client side proving"
 readme = "README.md"
-repository = "https://github.com/pluto/proving_ground"
+repository = "https://github.com/pluto/client-side-prover"
 license-file = "LICENSE"
 keywords = ["zkSNARKs", "cryptography", "proofs"]
 # rust-version = "1.79"
