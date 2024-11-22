@@ -34,10 +34,8 @@ use crate::{
 };
 
 mod circuit; // declare the module first
-pub use circuit::{StepCircuit, TrivialCircuit};
-use circuit::{
-    SuperNovaAugmentedCircuit, SuperNovaAugmentedCircuitInputs, SuperNovaAugmentedCircuitParams,
-};
+pub use circuit::{StepCircuit, SuperNovaAugmentedCircuitParams, TrivialCircuit};
+use circuit::{SuperNovaAugmentedCircuit, SuperNovaAugmentedCircuitInputs};
 use error::SuperNovaError;
 
 /// A struct that manages all the digests of the primary circuits of a SuperNova
@@ -105,18 +103,18 @@ pub struct AuxParams<E1>
 where
     E1: CurveCycleEquipped,
 {
-    ro_consts_primary: ROConstants<E1>,
-    ro_consts_circuit_primary: ROConstantsCircuit<Dual<E1>>,
-    ck_primary: Arc<CommitmentKey<E1>>, // This is shared between all circuit params
-    augmented_circuit_params_primary: SuperNovaAugmentedCircuitParams,
+    pub ro_consts_primary: ROConstants<E1>,
+    pub ro_consts_circuit_primary: ROConstantsCircuit<Dual<E1>>,
+    pub ck_primary: Arc<CommitmentKey<E1>>, // This is shared between all circuit params
+    pub augmented_circuit_params_primary: SuperNovaAugmentedCircuitParams,
 
-    ro_consts_secondary: ROConstants<Dual<E1>>,
-    ro_consts_circuit_secondary: ROConstantsCircuit<E1>,
-    ck_secondary: Arc<CommitmentKey<Dual<E1>>>,
-    circuit_shape_secondary: R1CSWithArity<Dual<E1>>,
-    augmented_circuit_params_secondary: SuperNovaAugmentedCircuitParams,
+    pub ro_consts_secondary: ROConstants<Dual<E1>>,
+    pub ro_consts_circuit_secondary: ROConstantsCircuit<E1>,
+    pub ck_secondary: Arc<CommitmentKey<Dual<E1>>>,
+    pub circuit_shape_secondary: R1CSWithArity<Dual<E1>>,
+    pub augmented_circuit_params_secondary: SuperNovaAugmentedCircuitParams,
 
-    digest: E1::Scalar,
+    pub digest: E1::Scalar,
 }
 
 impl<E1> Index<usize> for PublicParams<E1>
@@ -258,7 +256,8 @@ where
         (circuit_shapes, aux_params)
     }
 
-    /// Returns just the [`AuxParams`] portion of [`PublicParams`] from a reference to [`PublicParams`].
+    /// Returns just the [`AuxParams`] portion of [`PublicParams`] from a
+    /// reference to [`PublicParams`].
     pub fn aux_params(&self) -> AuxParams<E1> {
         AuxParams {
             ro_consts_primary: self.ro_consts_primary.clone(),
