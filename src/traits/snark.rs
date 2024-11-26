@@ -74,10 +74,10 @@ pub trait BatchedRelaxedR1CSSNARKTrait<E: Engine>:
     Send + Sync + Serialize + for<'de> Deserialize<'de>
 {
     /// A type that represents the prover's key
-    type ProverKey: Send + Sync;
+    type ProverKey: Send + Sync + Serialize + for<'de> Deserialize<'de>;
 
     /// A type that represents the verifier's key
-    type VerifierKey: Send + Sync + DigestHelperTrait<E>;
+    type VerifierKey: Send + Sync + DigestHelperTrait<E> + Serialize + for<'de> Deserialize<'de>;
 
     // NOTES: If we don't need something more general here, this is just an odd
     // thing to have defined generically since it just calls the weird function

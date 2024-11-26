@@ -21,13 +21,14 @@ use crate::{
 };
 
 /// Provides an implementation of the prover key
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(bound = "")]
 pub struct ProverKey<E: Engine> {
     ck_s: CommitmentKey<E>,
 }
 
 /// Provides an implementation of the verifier key
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(bound = "")]
 pub struct VerifierKey<E: Engine> {
     pub(in crate::provider) ck_v: Arc<CommitmentKey<E>>,
