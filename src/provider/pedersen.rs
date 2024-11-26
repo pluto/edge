@@ -30,7 +30,7 @@ where
     E: Engine,
     E::GE: DlogGroup<ScalarExt = E::Scalar>,
 {
-    pub(in crate::provider) ck: Vec<<E::GE as PrimeCurve>::Affine>,
+    pub ck: Vec<<E::GE as PrimeCurve>::Affine>,
 }
 
 impl<E> Len for CommitmentKey<E>
