@@ -14,14 +14,15 @@ use crate::{
 /// A trait that ties different pieces of the commitment evaluation together
 pub trait EvaluationEngineTrait<E: Engine>: Clone + Send + Sync {
     /// A type that holds the prover key
-    type ProverKey: Send + Sync;
+    type ProverKey: Send + Sync + Serialize + for<'de> Deserialize<'de>;
 
     /// A type that holds the verifier key
     type VerifierKey: Send
         + Sync
         // required for easy Digest computation purposes, could be relaxed to
         // [`crate::digest::Digestible`]
-        + Serialize;
+        + Serialize
+        + for<'de> Deserialize<'de>;
 
     /// A type that holds the evaluation argument
     type EvaluationArgument: Clone + Send + Sync + Serialize + for<'de> Deserialize<'de>;

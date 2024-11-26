@@ -44,7 +44,8 @@ use crate::{
 };
 
 /// A type that represents the prover's key
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(bound = "")]
 pub struct ProverKey<E: Engine, EE: EvaluationEngineTrait<E>> {
     pk_ee: EE::ProverKey,
     S_repr: Vec<R1CSShapeSparkRepr<E>>,
@@ -53,7 +54,7 @@ pub struct ProverKey<E: Engine, EE: EvaluationEngineTrait<E>> {
 }
 
 /// A type that represents the verifier's key
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(bound = "")]
 pub struct VerifierKey<E: Engine, EE: EvaluationEngineTrait<E>> {
     vk_ee: EE::VerifierKey,
