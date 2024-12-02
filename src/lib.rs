@@ -9,6 +9,7 @@ mod nifs;
 // public modules
 pub mod constants;
 pub mod errors;
+pub mod fast_serde;
 pub mod gadgets;
 pub mod provider;
 pub mod r1cs;

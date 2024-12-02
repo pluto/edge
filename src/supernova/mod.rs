@@ -117,6 +117,129 @@ where
     pub digest: E1::Scalar,
 }
 
+use std::io::Cursor;
+
+use crate::{
+    fast_serde,
+    fast_serde::{FastSerde, SerdeByteError, SerdeByteTypes},
+};
+
+impl<E1> FastSerde for AuxParams<E1>
+where
+    E1: CurveCycleEquipped,
+    <E1::CE as CommitmentEngineTrait<E1>>::CommitmentKey: FastSerde,
+    <<E1::Secondary as Engine>::CE as CommitmentEngineTrait<E1::Secondary>>::CommitmentKey:
+        FastSerde,
+{
+    /// Byte format:
+    /// [0..4]   - Magic number (4 bytes)
+    /// [4]      - Serde type: AuxParams (u8)
+    /// [5]      - Number of sections (u8 = 8)
+    /// Sections (repeated 8 times):
+    ///   [N]      - Section type (u8)
+    ///   [N+1..5] - Section size (u32)
+    ///   [N+5..]  - Section data (variable length)
+    /// Section types:
+    ///   1: ro_consts_primary (bincode)
+    ///   2: ro_consts_circuit_primary (bincode)
+    ///   3: ck_primary (FastSerde)
+    ///   4: ro_consts_secondary (bincode)
+    ///   5: ro_consts_circuit_secondary (bincode)
+    ///   6: ck_secondary (FastSerde)
+    ///   7: circuit_shape_secondary (json)
+    ///   8: digest (bincode)
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut out = Vec::new();
+
+        // Write header
+        out.extend_from_slice(&fast_serde::MAGIC_NUMBER);
+        out.push(fast_serde::SerdeByteTypes::AuxParams as u8);
+        out.push(8); // num_sections
+
+        // Write sections
+        let circuit_shape = serde_json::to_string(&self.circuit_shape_secondary)
+            .unwrap()
+            .as_bytes()
+            .to_vec();
+        Self::write_section_bytes(
+            &mut out,
+            1,
+            &bincode::serialize(&self.ro_consts_primary).unwrap(),
+        );
+        Self::write_section_bytes(
+            &mut out,
+            2,
+            &bincode::serialize(&self.ro_consts_circuit_primary).unwrap(),
+        );
+        Self::write_section_bytes(&mut out, 3, &self.ck_primary.to_bytes());
+        Self::write_section_bytes(
+            &mut out,
+            4,
+            &bincode::serialize(&self.ro_consts_secondary).unwrap(),
+        );
+        Self::write_section_bytes(
+            &mut out,
+            5,
+            &bincode::serialize(&self.ro_consts_circuit_secondary).unwrap(),
+        );
+        Self::write_section_bytes(&mut out, 6, &self.ck_secondary.to_bytes());
+        Self::write_section_bytes(&mut out, 7, &circuit_shape);
+        Self::write_section_bytes(&mut out, 8, &bincode::serialize(&self.digest).unwrap());
+
+        out
+    }
+
+    fn from_bytes(bytes: &Vec<u8>) -> Result<Self, SerdeByteError> {
+        let mut cursor = Cursor::new(bytes);
+
+        // Validate header
+        Self::validate_header(&mut cursor, SerdeByteTypes::AuxParams, 8)?;
+
+        // Read all sections
+        let ro_consts_primary = bincode::deserialize(&Self::read_section_bytes(&mut cursor, 1)?)?;
+        let ro_consts_circuit_primary =
+            bincode::deserialize(&Self::read_section_bytes(&mut cursor, 2)?)?;
+        let ck_primary = Arc::new(
+            <E1::CE as CommitmentEngineTrait<E1>>::CommitmentKey::from_bytes(
+                &Self::read_section_bytes(&mut cursor, 3)?,
+            )?,
+        );
+        let ro_consts_secondary = bincode::deserialize(&Self::read_section_bytes(&mut cursor, 4)?)?;
+        let ro_consts_circuit_secondary =
+            bincode::deserialize(&Self::read_section_bytes(&mut cursor, 5)?)?;
+        let ck_secondary = Arc::new(<<E1::Secondary as Engine>::CE as CommitmentEngineTrait<
+            E1::Secondary,
+        >>::CommitmentKey::from_bytes(
+            &Self::read_section_bytes(&mut cursor, 6)?
+        )?);
+        let circuit_shape_secondary =
+            serde_json::from_slice(&Self::read_section_bytes(&mut cursor, 7)?)?;
+        let digest = bincode::deserialize(&Self::read_section_bytes(&mut cursor, 8)?)?;
+
+        // NOTE: This does not check the digest. Maybe we should.
+        Ok(Self {
+            ro_consts_primary,
+            ro_consts_circuit_primary,
+            ck_primary,
+            augmented_circuit_params_primary: SuperNovaAugmentedCircuitParams::new(
+                BN_LIMB_WIDTH,
+                BN_N_LIMBS,
+                true,
+            ),
+            ro_consts_secondary,
+            ro_consts_circuit_secondary,
+            ck_secondary,
+            circuit_shape_secondary,
+            augmented_circuit_params_secondary: SuperNovaAugmentedCircuitParams::new(
+                BN_LIMB_WIDTH,
+                BN_N_LIMBS,
+                false,
+            ),
+            digest,
+        })
+    }
+}
+
 impl<E1> Index<usize> for PublicParams<E1>
 where
     E1: CurveCycleEquipped,
