@@ -4,17 +4,21 @@ use core::{
     marker::PhantomData,
     ops::{Add, Mul, MulAssign},
 };
+use std::io::Cursor;
 
 use ff::Field;
 use group::{
     prime::{PrimeCurve, PrimeCurveAffine},
     Curve, Group, GroupEncoding,
 };
+use halo2curves::serde::SerdeObject;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     errors::NovaError,
+    fast_serde,
+    fast_serde::{FastSerde, SerdeByteError, SerdeByteTypes},
     provider::traits::DlogGroup,
     traits::{
         commitment::{CommitmentEngineTrait, CommitmentTrait, Len},
@@ -30,7 +34,7 @@ where
     E: Engine,
     E::GE: DlogGroup<ScalarExt = E::Scalar>,
 {
-    pub(in crate::provider) ck: Vec<<E::GE as PrimeCurve>::Affine>,
+    pub ck: Vec<<E::GE as PrimeCurve>::Affine>,
 }
 
 impl<E> Len for CommitmentKey<E>
@@ -40,6 +44,62 @@ where
 {
     fn length(&self) -> usize {
         self.ck.len()
+    }
+}
+
+impl<E: Engine> FastSerde for CommitmentKey<E>
+where
+    <E::GE as PrimeCurve>::Affine: SerdeObject,
+    E::GE: DlogGroup<ScalarExt = E::Scalar>,
+{
+    /// Byte format:
+    ///
+    /// [0..4]   - Magic number (4 bytes)
+    /// [4]      - Serde type: CommitmentKey (u8)
+    /// [5]      - Number of sections (u8 = 1)
+    /// [6]      - Section 1 type: ck (u8)
+    /// [7..11]  - Section 1 size (u32)
+    /// [11..]   - Section 1 data
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut out = Vec::new();
+
+        out.extend_from_slice(&fast_serde::MAGIC_NUMBER);
+        out.push(fast_serde::SerdeByteTypes::CommitmentKey as u8);
+        out.push(1); // num_sections
+
+        Self::write_section_bytes(
+            &mut out,
+            1,
+            &self
+                .ck
+                .iter()
+                .flat_map(|p| p.to_raw_bytes())
+                .collect::<Vec<u8>>(),
+        );
+
+        out
+    }
+
+    fn from_bytes(bytes: &Vec<u8>) -> Result<Self, SerdeByteError> {
+        let mut cursor = Cursor::new(bytes);
+
+        // Validate header
+        Self::validate_header(&mut cursor, SerdeByteTypes::CommitmentKey, 1)?;
+
+        // Read ck section
+        let ck = Self::read_section_bytes(&mut cursor, 1)?
+            .chunks(
+                <E::GE as PrimeCurve>::Affine::identity()
+                    .to_raw_bytes()
+                    .len(),
+            )
+            .map(|bytes| {
+                <E::GE as PrimeCurve>::Affine::from_raw_bytes(bytes)
+                    .ok_or(SerdeByteError::G1DecodeError)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(Self { ck })
     }
 }
 

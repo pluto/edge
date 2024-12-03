@@ -1,9 +1,10 @@
 //! Commitment engine for KZG commitments
 
-use std::{marker::PhantomData, sync::Arc};
+use std::{io::Cursor, marker::PhantomData, sync::Arc};
 
 use ff::{Field, PrimeField, PrimeFieldBits};
 use group::{prime::PrimeCurveAffine, Curve, Group as _};
+use halo2curves::serde::SerdeObject;
 use pairing::Engine;
 use rand::rngs::StdRng;
 use rand_core::{CryptoRng, RngCore, SeedableRng};
@@ -11,6 +12,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     digest::SimpleDigestible,
+    fast_serde,
+    fast_serde::{FastSerde, SerdeByteError, SerdeByteTypes},
     provider::{pedersen::Commitment, traits::DlogGroup, util::fb_msm},
     traits::{
         commitment::{CommitmentEngineTrait, Len},
@@ -127,6 +130,75 @@ impl<E: Engine> UniversalKZGParam<E> {
         let pk = KZGProverKey::new(ukzg, 0, supported_size + 1);
         let vk = KZGVerifierKey { g, h, beta_h };
         (pk, vk)
+    }
+}
+
+impl<E: Engine> FastSerde for UniversalKZGParam<E>
+where
+    E::G1Affine: SerdeObject,
+    E::G2Affine: SerdeObject,
+{
+    /// Byte format:
+    ///
+    /// [0..4]   - Magic number (4 bytes)
+    /// [4]      - Serde type: UniversalKZGParam (u8)
+    /// [5]      - Number of sections (u8 = 2)
+    /// [6]      - Section 1 type: powers_of_g (u8)
+    /// [7..11]  - Section 1 size (u32)
+    /// [11..]   - Section 1 data
+    /// [...+1]  - Section 2 type: powers_of_h (u8)
+    /// [...+5]  - Section 2 size (u32)
+    /// [...end] - Section 2 data
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut out = Vec::new();
+
+        out.extend_from_slice(&fast_serde::MAGIC_NUMBER);
+        out.push(fast_serde::SerdeByteTypes::UniversalKZGParam as u8);
+        out.push(2); // num_sections
+
+        Self::write_section_bytes(
+            &mut out,
+            1,
+            &self
+                .powers_of_g
+                .iter()
+                .flat_map(|p| p.to_raw_bytes())
+                .collect::<Vec<u8>>(),
+        );
+
+        Self::write_section_bytes(
+            &mut out,
+            2,
+            &self
+                .powers_of_h
+                .iter()
+                .flat_map(|p| p.to_raw_bytes())
+                .collect::<Vec<u8>>(),
+        );
+
+        out
+    }
+
+    fn from_bytes(bytes: &Vec<u8>) -> Result<Self, SerdeByteError> {
+        let mut cursor = Cursor::new(bytes);
+
+        Self::validate_header(&mut cursor, SerdeByteTypes::UniversalKZGParam, 2)?;
+
+        // Read sections of points
+        let powers_of_g = Self::read_section_bytes(&mut cursor, 1)?
+            .chunks(E::G1Affine::identity().to_raw_bytes().len())
+            .map(|bytes| E::G1Affine::from_raw_bytes(bytes).ok_or(SerdeByteError::G1DecodeError))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let powers_of_h = Self::read_section_bytes(&mut cursor, 2)?
+            .chunks(E::G2Affine::identity().to_raw_bytes().len())
+            .map(|bytes| E::G2Affine::from_raw_bytes(bytes).ok_or(SerdeByteError::G2DecodeError))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(Self {
+            powers_of_g,
+            powers_of_h,
+        })
     }
 }
 

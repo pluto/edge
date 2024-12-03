@@ -9,6 +9,7 @@ mod nifs;
 // public modules
 pub mod constants;
 pub mod errors;
+pub mod fast_serde;
 pub mod gadgets;
 pub mod provider;
 pub mod r1cs;
@@ -933,7 +934,7 @@ pub fn circuit_digest<E1: CurveCycleEquipped, C: StepCircuit<E1::Scalar>>(
     cs.r1cs_shape().digest()
 }
 
-type CommitmentKey<E> = <<E as Engine>::CE as CommitmentEngineTrait<E>>::CommitmentKey;
+pub type CommitmentKey<E> = <<E as Engine>::CE as CommitmentEngineTrait<E>>::CommitmentKey;
 type Commitment<E> = <<E as Engine>::CE as CommitmentEngineTrait<E>>::Commitment;
 type CompressedCommitment<E> = <<<E as Engine>::CE as CommitmentEngineTrait<E>>::Commitment as CommitmentTrait<E>>::CompressedCommitment;
 type CE<E> = <E as Engine>::CE;
