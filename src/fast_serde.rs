@@ -9,6 +9,7 @@
 //! the rust runtime.
 
 use std::io::{Cursor, Read};
+use thiserror::Error;
 
 pub static MAGIC_NUMBER: [u8; 4] = [0x50, 0x4C, 0x55, 0x54];
 pub enum SerdeByteTypes {
@@ -17,36 +18,26 @@ pub enum SerdeByteTypes {
     CommitmentKey = 0x03,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum SerdeByteError {
+    #[error("{}", "invalid magic number")]
     InvalidMagicNumber,
+    #[error("{}", "invalid serde type")]
     InvalidSerdeType,
+    #[error("{}", "invalid section count")]
     InvalidSectionCount,
+    #[error("{}", "invalid section type")]
     InvalidSectionType,
+    #[error("{}", "invalid section size")]
     InvalidSectionSize,
-    IoError(std::io::Error),
-    BincodeError(Box<bincode::ErrorKind>),
-    JsonError(serde_json::Error),
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
+    #[error(transparent)]
+    BincodeError(#[from] Box<bincode::ErrorKind>),
+    #[error("{}", "g1 decode error")]
     G1DecodeError,
+    #[error("{}", "g2 decode error")]
     G2DecodeError,
-}
-
-impl From<std::io::Error> for SerdeByteError {
-    fn from(e: std::io::Error) -> Self {
-        SerdeByteError::IoError(e)
-    }
-}
-
-impl From<Box<bincode::ErrorKind>> for SerdeByteError {
-    fn from(error: Box<bincode::ErrorKind>) -> Self {
-        SerdeByteError::BincodeError(error)
-    }
-}
-
-impl From<serde_json::Error> for SerdeByteError {
-    fn from(error: serde_json::Error) -> Self {
-        SerdeByteError::JsonError(error)
-    }
 }
 
 /// A trait for fast conversions to bytes

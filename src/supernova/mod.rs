@@ -157,10 +157,6 @@ where
         out.push(8); // num_sections
 
         // Write sections
-        let circuit_shape = serde_json::to_string(&self.circuit_shape_secondary)
-            .unwrap()
-            .as_bytes()
-            .to_vec();
         Self::write_section_bytes(
             &mut out,
             1,
@@ -183,7 +179,7 @@ where
             &bincode::serialize(&self.ro_consts_circuit_secondary).unwrap(),
         );
         Self::write_section_bytes(&mut out, 6, &self.ck_secondary.to_bytes());
-        Self::write_section_bytes(&mut out, 7, &circuit_shape);
+        Self::write_section_bytes(&mut out, 7, &bincode::serialize(&self.circuit_shape_secondary).unwrap());
         Self::write_section_bytes(&mut out, 8, &bincode::serialize(&self.digest).unwrap());
 
         out
@@ -213,7 +209,7 @@ where
             &Self::read_section_bytes(&mut cursor, 6)?
         )?);
         let circuit_shape_secondary =
-            serde_json::from_slice(&Self::read_section_bytes(&mut cursor, 7)?)?;
+            bincode::deserialize(&Self::read_section_bytes(&mut cursor, 7)?)?;
         let digest = bincode::deserialize(&Self::read_section_bytes(&mut cursor, 8)?)?;
 
         // NOTE: This does not check the digest. Maybe we should.
