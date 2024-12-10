@@ -141,7 +141,10 @@ impl<E: Engine, EE: EvaluationEngineTrait<E>> BatchedRelaxedR1CSSNARKTrait<E>
         })
     }
 
-    fn initialize_pk(ck: Arc<CommitmentKey<E>>, vk_digest: E::Scalar) -> Result<Self::ProverKey, NovaError> {
+    fn initialize_pk(
+        ck: Arc<CommitmentKey<E>>,
+        vk_digest: E::Scalar,
+    ) -> Result<Self::ProverKey, NovaError> {
         todo!("unimplemented for batched_ppsnark");
     }
 
@@ -1371,12 +1374,15 @@ impl<E: Engine, EE: EvaluationEngineTrait<E>> RelaxedR1CSSNARKTrait<E>
     type ProverKey = ProverKey<E, EE>;
 
     type VerifierKey = VerifierKey<E, EE>;
-    
+
     fn ck_floor() -> Box<dyn for<'a> Fn(&'a R1CSShape<E>) -> usize> {
         <Self as BatchedRelaxedR1CSSNARKTrait<E>>::ck_floor()
     }
 
-    fn initialize_pk(ck: Arc<CommitmentKey<E>>, vk_digest: E::Scalar) -> Result<Self::ProverKey, NovaError> {
+    fn initialize_pk(
+        ck: Arc<CommitmentKey<E>>,
+        vk_digest: E::Scalar,
+    ) -> Result<Self::ProverKey, NovaError> {
         <Self as BatchedRelaxedR1CSSNARKTrait<E>>::initialize_pk(ck, vk_digest)
     }
 

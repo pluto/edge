@@ -49,9 +49,12 @@ pub trait RelaxedR1CSSNARKTrait<E: Engine>:
         default_ck_hint()
     }
 
-    /// Initialize a ProvingKey directly from a CommitmentKey and a 
-    /// already known vk_digest. 
-    fn initialize_pk(ck: Arc<CommitmentKey<E>>, vk_digest: E::Scalar) -> Result<Self::ProverKey, NovaError>; 
+    /// Initialize a ProvingKey directly from a CommitmentKey and a
+    /// already known vk_digest.
+    fn initialize_pk(
+        ck: Arc<CommitmentKey<E>>,
+        vk_digest: E::Scalar,
+    ) -> Result<Self::ProverKey, NovaError>;
 
     /// Produces the keys for the prover and the verifier
     fn setup(
@@ -93,11 +96,14 @@ pub trait BatchedRelaxedR1CSSNARKTrait<E: Engine>:
     /// be at least as large as this hint.
     fn ck_floor() -> Box<dyn for<'a> Fn(&'a R1CSShape<E>) -> usize> {
         default_ck_hint()
-    }   
+    }
 
-    /// Initialize a ProvingKey directly from a CommitmentKey and a 
-    /// already known vk_digest. 
-    fn initialize_pk(ck: Arc<CommitmentKey<E>>, vk_digest: E::Scalar) -> Result<Self::ProverKey, NovaError>; 
+    /// Initialize a ProvingKey directly from a CommitmentKey and a
+    /// already known vk_digest.
+    fn initialize_pk(
+        ck: Arc<CommitmentKey<E>>,
+        vk_digest: E::Scalar,
+    ) -> Result<Self::ProverKey, NovaError>;
 
     /// Produces the keys for the prover and the verifier
     ///
