@@ -38,8 +38,8 @@ use crate::{
 /// A type that represents the prover's key
 #[derive(Debug, Clone)]
 pub struct ProverKey<E: Engine, EE: EvaluationEngineTrait<E>> {
-    pk_ee: EE::ProverKey,
-    vk_digest: E::Scalar, // digest of the verifier's key
+    pub pk_ee: EE::ProverKey,
+    pub vk_digest: E::Scalar, // digest of the verifier's key
 }
 
 /// A type that represents the verifier's key

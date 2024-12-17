@@ -63,18 +63,18 @@ pub struct BatchedRelaxedR1CSSNARK<E: Engine, EE: EvaluationEngineTrait<E>> {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(bound = "")]
 pub struct ProverKey<E: Engine, EE: EvaluationEngineTrait<E>> {
-    pk_ee: EE::ProverKey,
-    vk_digest: E::Scalar, // digest of the verifier's key
+    pub pk_ee: EE::ProverKey,
+    pub vk_digest: E::Scalar, // digest of the verifier's key
 }
 
 /// A type that represents the verifier's key
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(bound = "")]
 pub struct VerifierKey<E: Engine, EE: EvaluationEngineTrait<E>> {
-    vk_ee: EE::VerifierKey,
+    pub vk_ee: EE::VerifierKey,
     S: Vec<R1CSShape<E>>,
     #[serde(skip, default = "OnceCell::new")]
-    digest: OnceCell<E::Scalar>,
+    pub digest: OnceCell<E::Scalar>,
 }
 
 impl<E: Engine, EE: EvaluationEngineTrait<E>> VerifierKey<E, EE> {

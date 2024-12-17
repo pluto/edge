@@ -687,8 +687,8 @@ where
     S1: RelaxedR1CSSNARKTrait<E1>,
     S2: RelaxedR1CSSNARKTrait<Dual<E1>>,
 {
-    pk_primary: S1::ProverKey,
-    pk_secondary: S2::ProverKey,
+    pub pk_primary: S1::ProverKey,
+    pub pk_secondary: S2::ProverKey,
 }
 
 /// A type that holds the verifier key for `CompressedSNARK`

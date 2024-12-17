@@ -17,6 +17,7 @@ pub enum SerdeByteTypes {
     AuxParams = 0x01,
     UniversalKZGParam = 0x02,
     CommitmentKey = 0x03,
+    ProverParams = 0x04
 }
 
 #[derive(Debug, Error)]
