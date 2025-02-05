@@ -1,10 +1,10 @@
 #![allow(non_snake_case)]
 
 // private modules
-mod bellpepper;
-mod circuit;
-mod digest;
-mod nifs;
+pub mod bellpepper;
+pub mod circuit;
+pub mod digest;
+pub mod nifs;
 
 // public modules
 pub mod constants;
