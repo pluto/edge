@@ -67,87 +67,70 @@ impl<'a, F: PrimeField, T: Digestible> DigestComputer<'a, F, T> {
   }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use ff::Field;
-//     use once_cell::sync::OnceCell;
-//     use serde::{Deserialize, Serialize};
+#[cfg(test)]
+mod tests {
+  use ff::Field;
+  use once_cell::sync::OnceCell;
+  use serde::{Deserialize, Serialize};
 
-//     use super::{DigestComputer, SimpleDigestible};
-//     use crate::traits::Engine;
+  use super::{DigestComputer, SimpleDigestible};
+  use crate::{provider::GrumpkinEngine, traits::Engine};
 
-//     type E = PallasEngine;
+  type E = GrumpkinEngine;
 
-//     #[derive(Serialize, Deserialize)]
-//     struct S<E: Engine> {
-//         i: usize,
-//         #[serde(skip, default = "OnceCell::new")]
-//         digest: OnceCell<E::Scalar>,
-//     }
+  #[derive(Serialize, Deserialize)]
+  struct S<E: Engine> {
+    i:      usize,
+    #[serde(skip, default = "OnceCell::new")]
+    digest: OnceCell<E::Scalar>,
+  }
 
-//     impl<E: Engine> SimpleDigestible for S<E> {}
+  impl<E: Engine> SimpleDigestible for S<E> {}
 
-//     impl<E: Engine> S<E> {
-//         fn new(i: usize) -> Self {
-//             Self {
-//                 i,
-//                 digest: OnceCell::new(),
-//             }
-//         }
+  impl<E: Engine> S<E> {
+    fn new(i: usize) -> Self { Self { i, digest: OnceCell::new() } }
 
-//         fn digest(&self) -> E::Scalar {
-//             self.digest
-//                 .get_or_try_init(|| DigestComputer::new(self).digest())
-//                 .cloned()
-//                 .unwrap()
-//         }
-//     }
+    fn digest(&self) -> E::Scalar {
+      self.digest.get_or_try_init(|| DigestComputer::new(self).digest()).cloned().unwrap()
+    }
+  }
 
-//     #[test]
-//     fn test_digest_field_not_ingested_in_computation() {
-//         let s1 = S::<E>::new(42);
+  #[test]
+  fn test_digest_field_not_ingested_in_computation() {
+    let s1 = S::<E>::new(42);
 
-//         // let's set up a struct with a weird digest field to make sure the
-// digest         // computation does not depend of it
-//         let oc = OnceCell::new();
-//         oc.set(<E as Engine>::Scalar::ONE).unwrap();
+    // let's set up a struct with a weird digest field to make sure the digest
+    // computation does not depend of it
+    let oc = OnceCell::new();
+    oc.set(<E as Engine>::Scalar::ONE).unwrap();
 
-//         let s2: S<E> = S { i: 42, digest: oc };
+    let s2: S<E> = S { i: 42, digest: oc };
 
-//         assert_eq!(
-//             DigestComputer::<<E as Engine>::Scalar, _>::new(&s1)
-//                 .digest()
-//                 .unwrap(),
-//             DigestComputer::<<E as Engine>::Scalar, _>::new(&s2)
-//                 .digest()
-//                 .unwrap()
-//         );
+    assert_eq!(
+      DigestComputer::<<E as Engine>::Scalar, _>::new(&s1).digest().unwrap(),
+      DigestComputer::<<E as Engine>::Scalar, _>::new(&s2).digest().unwrap()
+    );
 
-//         // note: because of the semantics of `OnceCell::get_or_try_init`, the
-// above         // equality will not result in `s1.digest() == s2.digest`
-//         assert_ne!(
-//             s2.digest(),
-//             DigestComputer::<<E as Engine>::Scalar, _>::new(&s2)
-//                 .digest()
-//                 .unwrap()
-//         );
-//     }
+    // note: because of the semantics of `OnceCell::get_or_try_init`, the above
+    // equality will not result in `s1.digest() == s2.digest`
+    assert_ne!(s2.digest(), DigestComputer::<<E as Engine>::Scalar, _>::new(&s2).digest().unwrap());
+  }
 
-//     #[test]
-//     fn test_digest_impervious_to_serialization() {
-//         let good_s = S::<E>::new(42);
+  #[test]
+  fn test_digest_impervious_to_serialization() {
+    let good_s = S::<E>::new(42);
 
-//         // let's set up a struct with a weird digest field to confuse
-// deserializers         let oc = OnceCell::new();
-//         oc.set(<E as Engine>::Scalar::ONE).unwrap();
+    // let's set up a struct with a weird digest field to confuse deserializers
+    let oc = OnceCell::new();
+    oc.set(<E as Engine>::Scalar::ONE).unwrap();
 
-//         let bad_s: S<E> = S { i: 42, digest: oc };
-//         // this justifies the adjective "bad"
-//         assert_ne!(good_s.digest(), bad_s.digest());
+    let bad_s: S<E> = S { i: 42, digest: oc };
+    // this justifies the adjective "bad"
+    assert_ne!(good_s.digest(), bad_s.digest());
 
-//         let naughty_bytes = bincode::serialize(&bad_s).unwrap();
+    let naughty_bytes = bincode::serialize(&bad_s).unwrap();
 
-//         let retrieved_s: S<E> =
-// bincode::deserialize(&naughty_bytes).unwrap();         assert_eq!(good_s.
-// digest(), retrieved_s.digest())     }
-// }
+    let retrieved_s: S<E> = bincode::deserialize(&naughty_bytes).unwrap();
+    assert_eq!(good_s.digest(), retrieved_s.digest())
+  }
+}
