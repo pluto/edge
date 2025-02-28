@@ -22,19 +22,14 @@ use client_side_prover::{
 use data::{Expanded, InitializedSetup};
 use proof::FoldingProof;
 use tracing::trace;
-use utils::into_input_json;
 
 use super::*;
 use crate::{
   circom::witness::generate_witness_from_browser_type,
-  program::{
-    data::{ProofParams, SetupParams},
-    utils::into_circom_input,
-  },
+  program::data::{ProofParams, SetupParams},
 };
 
 pub mod data;
-pub mod utils;
 
 // TODO: Consider moving contents of mod.rs files to a separate files. mod.rs
 // files should  only be used to adjust the visibility of exported items.

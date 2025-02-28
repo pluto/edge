@@ -1,8 +1,3 @@
-// TODO: This module is so I can see if we can actually fold these noir circuits properly. I'm going
-// to write code here to make it work that doesn't effect the circom build at all. I found bringing
-// those together in some generic way is quite painful and truth be told would likely be easier to
-// just completely rebuild.
-
 use std::path::Path;
 
 use client_side_prover::{
@@ -13,7 +8,6 @@ use tracing::trace;
 use tracing_test::traced_test;
 
 use super::*;
-use crate::program::utils;
 
 const ADD_EXTERNAL: &[u8] = include_bytes!("../../examples/noir_circuit_data/add_external.json");
 const SQUARE_ZEROTH: &[u8] = include_bytes!("../../examples/noir_circuit_data/square_zeroth.json");
