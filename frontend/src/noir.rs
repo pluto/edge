@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use acvm::{
   acir::{
     acir_field::GenericFieldElement,
@@ -24,16 +26,62 @@ use crate::program::SwitchboardWitness;
 // assigning inputs.
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct NoirProgram {
+  #[serde(rename = "noir_version")]
+  pub version:       String,
+  pub hash:          u64,
+  pub abi:           NoirAbi,
   #[serde(
     serialize_with = "Program::serialize_program_base64",
     deserialize_with = "Program::deserialize_program_base64"
   )]
-  pub bytecode: Program<GenericFieldElement<Fr>>,
-  pub witness:  Option<SwitchboardWitness>,
-  pub index:    usize,
-  // TODO: To make this more efficient, we could just store an option of the `&mut CS` inside of
-  // here so we don't actually need to rebuild it always, though the enforcement for the public
-  // inputs is tougher
+  pub bytecode:      Program<GenericFieldElement<Fr>>,
+  pub debug_symbols: String,
+  pub file_map:      HashMap<String, String>,
+  pub names:         Vec<String>,
+  pub brillig_names: Vec<String>,
+  #[serde(skip)]
+  pub witness:       Option<SwitchboardWitness>,
+  #[serde(skip)]
+  pub index:         usize,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct NoirAbi {
+  pub parameters:  Vec<NoirParameter>,
+  pub return_type: NoirReturnType,
+  pub error_types: HashMap<String, String>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct NoirParameter {
+  pub name:           String,
+  #[serde(rename = "type")]
+  pub parameter_type: NoirType,
+  pub visibility:     String,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct NoirReturnType {
+  pub abi_type:   NoirType,
+  pub visibility: String,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+#[serde(untagged)]
+pub enum NoirType {
+  Simple {
+    kind: String,
+  },
+  Array {
+    kind:         String,
+    length:       usize,
+    #[serde(rename = "type")]
+    element_type: Box<NoirType>,
+  },
+  Tuple {
+    kind:   String,
+    fields: Vec<NoirType>,
+  },
 }
 
 impl NoirProgram {
