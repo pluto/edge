@@ -130,8 +130,8 @@ impl StepCircuit<F<G1>> for NoirProgram {
       None
     };
 
-    // For folding in particular:
-    assert_eq!(self.circuit().return_values.0.len(), self.circuit().public_parameters.0.len());
+    // TODO: This is a bit hacky. For NIVC folding in particular:
+    assert_eq!(self.circuit().return_values.0.len() - 1, self.circuit().public_parameters.0.len());
 
     // TODO: we could probably avoid this but i'm lazy
     // Create a map to track allocated variables for the cs

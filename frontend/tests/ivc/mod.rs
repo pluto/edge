@@ -4,8 +4,41 @@ use super::*;
 
 #[test]
 #[traced_test]
-fn test_mock_noir_ivc() {
-  let mut circuit = add_external();
+fn test_ivc() {
+  let circuit = square_zeroth();
+  let witnesses = vec![
+    SwitchboardWitness { witness: vec![], pc: 0 },
+    SwitchboardWitness { witness: vec![], pc: 0 },
+    SwitchboardWitness { witness: vec![], pc: 0 },
+  ];
+
+  let memory = Switchboard {
+    circuits: vec![circuit],
+    public_input: vec![F::<G1>::from(2), F::<G1>::from(1)],
+    initial_circuit_index: 0,
+    witnesses,
+  };
+
+  let snark = run(&memory).unwrap();
+  let zi = snark.zi_primary();
+  dbg!(zi);
+  // First fold:
+  // step_out[0] == 3 * 1 + 2 + 1   == 6
+  // step_out[1] == (3 + 3) * 2 + 1 == 13
+  // Second fold:
+  // step_out[0] == 3 * 6 + 13 + 1 == 32
+  // step_out[1] == (3 + 3) * 13 + 6 == 84
+  //   assert_eq!(zi[0], F::<G1>::from(32));
+  //   assert_eq!(zi[1], F::<G1>::from(84));
+  //   assert_eq!(zi[2], F::<G1>::from(2));
+  //   assert_eq!(zi[3], F::<G1>::from(0));
+  //   assert_eq!(zi[4], F::<G1>::from(0));
+}
+
+#[test]
+#[traced_test]
+fn test_ivc_private_inputs() {
+  let circuit = add_external();
   let witnesses = vec![
     SwitchboardWitness { witness: vec![F::<G1>::from(3), F::<G1>::from(3)], pc: 0 },
     SwitchboardWitness { witness: vec![F::<G1>::from(5), F::<G1>::from(7)], pc: 0 },
