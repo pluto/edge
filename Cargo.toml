@@ -33,7 +33,7 @@ rand             ="0.8.5"
 ref-cast         ="1.0.20"                                                                                       # allocation-less conversion in multilinear polys                                                                                  # lightens impl macros for pasta
 static_assertions="1.1.0"
 rayon-scan       ="0.1.0"
-hex               ="0.4.3"
+hex              ="0.4.3"
 
 # grumpkin-msm has been patched to support MSMs for the pasta curve cycle
 # see: https://github.com/argumentcomputer/grumpkin-msm/pull/3

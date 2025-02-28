@@ -77,5 +77,3 @@ default=["grumpkin-msm/portable"]
 # Compiles in portable mode, w/o ISA extensions => binary can be executed on all systems.
 # portable = ["grumpkin-msm/portable"]
 # cuda = ["grumpkin-msm/cuda"]
-
-

@@ -6,19 +6,19 @@ edition="2021"
 [dependencies]
 client-side-prover={ path="../prover" }
 
-serde      ={ workspace=true }
-serde_json ={ workspace=true }
-thiserror  ={ workspace=true }
-tracing    ={ workspace=true }
-hex               ={ workspace=true }
-ff                ={ workspace=true }
-bellpepper-core   ={ workspace=true }
-halo2curves       ={ workspace=true }
+serde          ={ workspace=true }
+serde_json     ={ workspace=true }
+thiserror      ={ workspace=true }
+tracing        ={ workspace=true }
+hex            ={ workspace=true }
+ff             ={ workspace=true }
+bellpepper-core={ workspace=true }
+halo2curves    ={ workspace=true }
 
 byteorder ={ workspace=true }
 num-bigint={ workspace=true }
 itertools ={ workspace=true }
-bincode={ workspace=true }
+bincode   ={ workspace=true }
 
 # noir
 acvm     ={ git="https://github.com/noir-lang/noir", rev="v1.0.0-beta.2" }
@@ -37,7 +37,7 @@ circom_witnesscalc={ git="https://github.com/pluto/circom-witnesscalc" } # Fork 
 [dev-dependencies]
 tracing-test="0.2.5"
 tempdir     ="0.3.7"
-tokio = { version = "1.43", features = ["full"] }
+tokio       ={ version="1.43", features=["full"] }
 
 [features]
 verify-steps=[]
