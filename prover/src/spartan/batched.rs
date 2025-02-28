@@ -309,21 +309,20 @@ impl<E: Engine, EE: EvaluationEngineTrait<E>> BatchedRelaxedR1CSSNARKTrait<E>
     .collect::<Vec<_>>();
 
     // Create evaluation instances for W(r_y[1..]) and E(r_x)
-    let (w_vec, u_vec) =
-      {
-        let mut w_vec = Vec::with_capacity(2 * num_instances);
-        let mut u_vec = Vec::with_capacity(2 * num_instances);
-        w_vec.extend(polys_W.into_iter().map(|poly| PolyEvalWitness { p: poly }));
-        u_vec.extend(zip_with!(iter, (evals_W, U, r_y), |eval, u, r_y| {
-          PolyEvalInstance { c: u.comm_W, x: r_y[1..].to_vec(), e: *eval }
-        }));
+    let (w_vec, u_vec) = {
+      let mut w_vec = Vec::with_capacity(2 * num_instances);
+      let mut u_vec = Vec::with_capacity(2 * num_instances);
+      w_vec.extend(polys_W.into_iter().map(|poly| PolyEvalWitness { p: poly }));
+      u_vec.extend(zip_with!(iter, (evals_W, U, r_y), |eval, u, r_y| {
+        PolyEvalInstance { c: u.comm_W, x: r_y[1..].to_vec(), e: *eval }
+      }));
 
-        w_vec.extend(polys_E.into_iter().map(|poly| PolyEvalWitness { p: poly }));
-        u_vec.extend(zip_with!((evals_E.iter(), U.iter(), r_x), |eval_E, u, r_x| {
-          PolyEvalInstance { c: u.comm_E, x: r_x, e: *eval_E }
-        }));
-        (w_vec, u_vec)
-      };
+      w_vec.extend(polys_E.into_iter().map(|poly| PolyEvalWitness { p: poly }));
+      u_vec.extend(zip_with!((evals_E.iter(), U.iter(), r_x), |eval_E, u, r_x| {
+        PolyEvalInstance { c: u.comm_E, x: r_x, e: *eval_E }
+      }));
+      (w_vec, u_vec)
+    };
 
     let (batched_u, batched_w, sc_proof_batch, claims_batch_left) =
       batch_eval_reduce(u_vec, &w_vec, &mut transcript)?;

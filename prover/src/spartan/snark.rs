@@ -95,8 +95,8 @@ impl<E: Engine, EE: EvaluationEngineTrait<E>> RelaxedR1CSSNARKTrait<E> for Relax
   type VerifierKey = VerifierKey<E, EE>;
 
   fn initialize_pk(
-    ck: Arc<CommitmentKey<E>>,
-    vk_digest: <E as Engine>::Scalar,
+    _ck: Arc<CommitmentKey<E>>,
+    _vk_digest: <E as Engine>::Scalar,
   ) -> Result<Self::ProverKey, NovaError> {
     todo!("not implemented for nova snarks");
   }

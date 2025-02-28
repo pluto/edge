@@ -97,7 +97,6 @@ pub fn run(memory: &NoirMemory) -> Result<RecursiveSNARK<E1>, ProofError> {
 
   let mut recursive_snark_option = None;
 
-  #[cfg(feature = "timing")]
   let time = std::time::Instant::now();
   for (idx, &op_code) in memory.rom.iter().enumerate() {
     info!("Step {} of ROM", idx);

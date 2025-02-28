@@ -37,7 +37,7 @@ impl<G: Group> AllocatedPoint<G> {
     let y =
       AllocatedNum::alloc(cs.namespace(|| "y"), || Ok(coords.map_or(G::Base::ZERO, |c| c.1)))?;
     let is_infinity = AllocatedNum::alloc(cs.namespace(|| "is_infinity"), || {
-      Ok(if coords.map_or(true, |c| c.2) { G::Base::ONE } else { G::Base::ZERO })
+      Ok(if coords.is_none_or(|c| c.2) { G::Base::ONE } else { G::Base::ZERO })
     })?;
     cs.enforce(
       || "is_infinity is bit",

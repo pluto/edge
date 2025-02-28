@@ -8,9 +8,10 @@ We aim to provide a mathematical description of the protocol, as it is implement
 Before delving into the specifics of the implementation, it's crucial to define and clarify some key terms and concepts used throughout this document:
 
 - **Recursive SNARK**: A Recursive SNARK is a type of succinct non-interactive argument of knowledge for a circuit $F$ which can be composed with itself as $z\_{i+1} \gets F(z_i)$.
-Each iteration proves the verification of a proof for $z_i$ and the correctness of $z\_{i+1}$, ensuring the proving of each step remains constant.
+	Each iteration proves the verification of a proof for $z_i$ and the correctness of $z\_{i+1}$, ensuring the proving of each step remains constant.
 - **Augmentation Circuit**: In the context of the SuperNova protocol, an augmentation circuit refers to a circuit $F'$ composing $F$ with a circuit which partially verifies the validity of the previous output $z_i$ before running $F(z_i)$.
 - **NIFS Folding Verifier**: A non-interactive folding scheme is a protocol for efficiently updating a proof $\pi_i$ about an iterated function $z\_{i+1} \gets F(z_i)$ into a new proof $\pi\_{i+1}$, through a process referred to as "folding".
+
 By splitting the proof into an instance/witness pair $(u,w) = \pi$, the folding verifier describes an algorithm for verifying that the $u$ component was properly updated.
 
 ## SuperNova vs. Nova
@@ -44,7 +45,7 @@ While the original Nova implementation allows computation to be done on both cur
 The prover needs to store data about the previous function iteration. It is defined by the `supernova::RecursiveSNARK` struct. It contains:
 
 - $i$: the number of iterations performed.
-Note that the `new` constructor actually performs the first iteration, and the first call to `prove_step` simply sets the counter to 1.
+	Note that the `new` constructor actually performs the first iteration, and the first call to `prove_step` simply sets the counter to 1.
 - Primary curve:
 	- $(\mathsf{pc}_i, z_0, z_i)$: current program counter and inputs for the primary circuit
 	- $U[\ ],W[\ ]$: List of relaxed instance/witness pairs for all the circuits on the primary curve.

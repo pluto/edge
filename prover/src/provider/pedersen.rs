@@ -73,7 +73,7 @@ where
     out
   }
 
-  fn from_bytes(bytes: &Vec<u8>) -> Result<Self, SerdeByteError> {
+  fn from_bytes(bytes: &[u8]) -> Result<Self, SerdeByteError> {
     let mut cursor = Cursor::new(bytes);
 
     // Validate header
@@ -179,7 +179,7 @@ where
   fn mul_assign(&mut self, scalar: E::Scalar) { *self = Self { comm: self.comm * scalar }; }
 }
 
-impl<'a, 'b, E> Mul<&'b E::Scalar> for &'a Commitment<E>
+impl<'b, E> Mul<&'b E::Scalar> for &Commitment<E>
 where
   E: Engine,
   E::GE: DlogGroup<ScalarExt = E::Scalar>,

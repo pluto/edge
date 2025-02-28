@@ -78,7 +78,4 @@ default=["grumpkin-msm/portable"]
 # portable = ["grumpkin-msm/portable"]
 # cuda = ["grumpkin-msm/cuda"]
 
-[profile.release]
-lto          =true
-codegen-units=1
-panic        ="abort"
+

@@ -138,8 +138,8 @@ impl<E: Engine, EE: EvaluationEngineTrait<E>> BatchedRelaxedR1CSSNARKTrait<E>
   }
 
   fn initialize_pk(
-    ck: Arc<CommitmentKey<E>>,
-    vk_digest: E::Scalar,
+    _ck: Arc<CommitmentKey<E>>,
+    _vk_digest: E::Scalar,
   ) -> Result<Self::ProverKey, NovaError> {
     todo!("unimplemented for batched_ppsnark");
   }

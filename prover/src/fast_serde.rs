@@ -45,10 +45,10 @@ pub enum SerdeByteError {
 /// A trait for fast conversions to bytes
 pub trait FastSerde: Sized {
   fn to_bytes(&self) -> Vec<u8>;
-  fn from_bytes(bytes: &Vec<u8>) -> Result<Self, SerdeByteError>;
+  fn from_bytes(bytes: &[u8]) -> Result<Self, SerdeByteError>;
 
   fn validate_header(
-    cursor: &mut Cursor<&Vec<u8>>,
+    cursor: &mut Cursor<&[u8]>,
     expected_type: SerdeByteTypes,
     expected_sections: u8,
   ) -> Result<(), SerdeByteError> {
@@ -74,7 +74,7 @@ pub trait FastSerde: Sized {
   }
 
   fn read_section_bytes(
-    cursor: &mut Cursor<&Vec<u8>>,
+    cursor: &mut Cursor<&[u8]>,
     expected_type: u8,
   ) -> Result<Vec<u8>, SerdeByteError> {
     let mut section_type = [0u8; 1];
@@ -92,7 +92,7 @@ pub trait FastSerde: Sized {
     Ok(section_data)
   }
 
-  fn write_section_bytes(out: &mut Vec<u8>, section_type: u8, data: &Vec<u8>) {
+  fn write_section_bytes(out: &mut Vec<u8>, section_type: u8, data: &[u8]) {
     out.push(section_type);
     out.extend_from_slice(&(data.len() as u32).to_le_bytes());
     out.extend_from_slice(data);

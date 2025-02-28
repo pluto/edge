@@ -1,4 +1,4 @@
-#![allow(non_snake_case)]
+#![allow(non_snake_case, clippy::type_complexity, clippy::too_many_arguments)]
 
 // private modules
 pub mod bellpepper;
@@ -537,6 +537,7 @@ where E1: CurveCycleEquipped
   }
 
   /// Verify the correctness of the `RecursiveSNARK`
+  #[allow(clippy::type_complexity)]
   pub fn verify(
     &self,
     pp: &PublicParams<E1>,
@@ -707,6 +708,7 @@ where
   S2: RelaxedR1CSSNARKTrait<Dual<E1>>,
 {
   /// Creates prover and verifier keys for `CompressedSNARK`
+  #[allow(clippy::type_complexity)]
   pub fn setup(
     pp: &PublicParams<E1>,
   ) -> Result<(ProverKey<E1, S1, S2>, VerifierKey<E1, S1, S2>), NovaError> {
@@ -784,6 +786,7 @@ where
     })
   }
 
+  #[allow(clippy::type_complexity)]
   /// Verify the correctness of the `CompressedSNARK`
   pub fn verify(
     &self,

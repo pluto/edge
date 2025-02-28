@@ -19,6 +19,7 @@ use crate::{
 /// use with these public parameters, and the below is a sensible default, which
 /// is to not require any more bases then the usual (maximum of the number of
 /// variables and constraints of the involved R1CS circuit).
+#[allow(clippy::type_complexity)]
 pub fn default_ck_hint<E: Engine>() -> Box<dyn for<'a> Fn(&'a R1CSShape<E>) -> usize> {
   // The default is to not put an additional floor on the size of the commitment
   // key
@@ -42,6 +43,7 @@ pub trait RelaxedR1CSSNARKTrait<E: Engine>:
   /// a minimum sizing cue for the commitment key used by this SNARK
   /// implementation. The commitment key passed in setup should then
   /// be at least as large as this hint.
+  #[allow(clippy::type_complexity)]
   fn ck_floor() -> Box<dyn for<'a> Fn(&'a R1CSShape<E>) -> usize> {
     // The default is to not put an additional floor on the size of the commitment
     // key
@@ -92,6 +94,7 @@ pub trait BatchedRelaxedR1CSSNARKTrait<E: Engine>:
   /// a minimum sizing cue for the commitment key used by this SNARK
   /// implementation. The commitment key passed in setup should then
   /// be at least as large as this hint.
+  #[allow(clippy::type_complexity)]
   fn ck_floor() -> Box<dyn for<'a> Fn(&'a R1CSShape<E>) -> usize> { default_ck_hint() }
 
   /// Initialize a ProvingKey directly from a CommitmentKey and a

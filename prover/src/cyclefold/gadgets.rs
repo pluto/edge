@@ -444,6 +444,7 @@ pub mod emulated {
     /// provided to the primary circuit as non-deterministic advice,
     /// this folding simply sets those values as the new witness and
     /// error vector commitments.
+    #[allow(clippy::too_many_arguments, clippy::type_complexity)]
     pub fn fold_with_r1cs<CS: ConstraintSystem<<E as Engine>::Base>>(
       &self,
       mut cs: CS,

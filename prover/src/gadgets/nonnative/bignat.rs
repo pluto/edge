@@ -220,7 +220,7 @@ impl<Scalar: PrimeField> BigNat<Scalar> {
   ) -> Result<Self, SynthesisError> {
     let bignat = Self::alloc_from_nat(
       cs.namespace(|| "bignat"),
-      || Ok({ n.value.as_ref().map(|n| f_to_nat(n)).ok_or(SynthesisError::AssignmentMissing)? }),
+      || n.value.as_ref().map(|n| f_to_nat(n)).ok_or(SynthesisError::AssignmentMissing),
       limb_width,
       n_limbs,
     )?;

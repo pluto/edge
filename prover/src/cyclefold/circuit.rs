@@ -41,6 +41,7 @@ impl<E: Engine> CycleFoldCircuit<E> {
     Self { commit_1, commit_2, scalar, poseidon_constants }
   }
 
+  #[allow(clippy::type_complexity)]
   fn alloc_witness<CS: ConstraintSystem<<E as Engine>::Base>>(
     &self,
     mut cs: CS,

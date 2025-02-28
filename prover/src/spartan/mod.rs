@@ -149,6 +149,7 @@ impl<E: Engine> PolyEvalInstance<E> {
 
 /// Binds "row" variables of (A, B, C) matrices viewed as 2d multilinear
 /// polynomials
+#[allow(clippy::type_complexity)]
 fn compute_eval_table_sparse<E: Engine>(
   S: &R1CSShape<E>,
   rx: &[E::Scalar],

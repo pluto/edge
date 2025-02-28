@@ -34,6 +34,7 @@ where
   /// instance-witness pair (U2, W2) and folds them into a new relaxed
   /// R1CS instance-witness pair (U, W) and a commitment to the cross term
   /// T. It also provides the challenge r used to fold the instances.
+  #[allow(clippy::too_many_arguments, clippy::type_complexity)]
   pub fn prove(
     ck: &CommitmentKey<E1>,
     ro_consts: &ROConstants<E2>,
@@ -87,6 +88,7 @@ impl<E: Engine> CycleFoldNIFS<E> {
   /// Folds an R1CS instance/witness pair (U2, W2) into a relaxed R1CS
   /// instance/witness (U1, W1) returning the new folded accumulator and a
   /// commitment to the cross-term.
+  #[allow(clippy::too_many_arguments, clippy::type_complexity)]
   pub fn prove(
     ck: &CommitmentKey<E>,
     ro_consts: &ROConstants<E>,

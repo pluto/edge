@@ -364,6 +364,7 @@ impl<E: Engine> SumcheckProof<E> {
       )
   }
 
+  #[allow(clippy::too_many_arguments, clippy::type_complexity)]
   pub fn prove_cubic_with_additive_term<F>(
     claim: &E::Scalar,
     num_rounds: usize,
@@ -414,6 +415,7 @@ impl<E: Engine> SumcheckProof<E> {
     Ok((Self { compressed_polys: polys }, r, vec![poly_A[0], poly_B[0], poly_C[0], poly_D[0]]))
   }
 
+  #[allow(clippy::too_many_arguments, clippy::type_complexity)]
   pub fn prove_cubic_with_additive_term_batch<F>(
     claims: &[E::Scalar],
     num_rounds: &[usize],

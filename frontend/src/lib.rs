@@ -1,4 +1,5 @@
-#![warn(missing_docs, clippy::missing_docs_in_private_items)]
+// TODO: Add back missing docs
+// #![warn(missing_docs, clippy::missing_docs_in_private_items)]
 
 //! # Proofs Crate
 //!

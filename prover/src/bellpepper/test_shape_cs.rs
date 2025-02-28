@@ -53,6 +53,7 @@ pub struct TestShapeCS<E: Engine> {
   named_objects:     HashMap<String, NamedObject>,
   current_namespace: Vec<String>,
   /// All constraints added to the `TestShapeCS`.
+  #[allow(clippy::type_complexity)]
   pub constraints: Vec<(
     LinearCombination<E::Scalar>,
     LinearCombination<E::Scalar>,
@@ -73,9 +74,9 @@ fn proc_lc<Scalar: PrimeField>(
 
   // Remove terms that have a zero coefficient to normalize
   let mut to_remove = vec![];
-  for (var, coeff) in map.iter() {
+  for (var, coeff) in &map {
     if coeff.is_zero().into() {
-      to_remove.push(*var)
+      to_remove.push(*var);
     }
   }
 

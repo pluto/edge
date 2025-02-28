@@ -171,7 +171,7 @@ where
     out
   }
 
-  fn from_bytes(bytes: &Vec<u8>) -> Result<Self, SerdeByteError> {
+  fn from_bytes(bytes: &[u8]) -> Result<Self, SerdeByteError> {
     let mut cursor = Cursor::new(bytes);
 
     // Validate header
@@ -936,6 +936,7 @@ where E1: CurveCycleEquipped
   }
 
   /// verify recursive snark
+  #[allow(clippy::type_complexity)]
   pub fn verify(
     &self,
     pp: &PublicParams<E1>,

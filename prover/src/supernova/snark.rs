@@ -76,10 +76,11 @@ where
     let pk_primary = S1::initialize_pk(pp.ck_primary.clone(), primary_vk_digest)?;
     let pk_secondary = S2::initialize_pk(pp.ck_secondary.clone(), secondary_vk_digest)?;
 
-    return Ok(ProverKey { pk_primary, pk_secondary });
+    Ok(ProverKey { pk_primary, pk_secondary })
   }
 
   /// Creates prover and verifier keys for `CompressedSNARK`
+  #[allow(clippy::type_complexity)]
   pub fn setup(
     pp: &PublicParams<E1>,
   ) -> Result<(ProverKey<E1, S1, S2>, VerifierKey<E1, S1, S2>), SuperNovaError> {
@@ -176,6 +177,7 @@ where
   }
 
   /// Verify the correctness of the `CompressedSNARK`
+  #[allow(clippy::type_complexity)]
   pub fn verify(
     &self,
     pp: &PublicParams<E1>,

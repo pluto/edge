@@ -57,6 +57,7 @@ where
   E1: Engine<Base = <E2 as Engine>::Scalar>,
   E2: Engine<Base = <E1 as Engine>::Scalar>,
 {
+  #[allow(clippy::too_many_arguments, clippy::type_complexity)]
   pub fn new(
     pp_digest: E1::Scalar,
     i: E1::Base,
@@ -97,6 +98,7 @@ where
     Self { params, ro_consts, inputs, step_circuit }
   }
 
+  #[allow(clippy::type_complexity)]
   fn alloc_witness<CS: ConstraintSystem<<E1 as Engine>::Base>>(
     &self,
     mut cs: CS,
@@ -212,6 +214,7 @@ where
     Ok((U_c_default, U_p_default))
   }
 
+  #[allow(clippy::too_many_arguments, clippy::type_complexity)]
   pub fn synthesize_non_base_case<CS: ConstraintSystem<<E1 as Engine>::Base>>(
     &self,
     mut cs: CS,

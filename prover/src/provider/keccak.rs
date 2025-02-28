@@ -65,7 +65,7 @@ impl<E: Engine> TranscriptEngineTrait<E> for Keccak256Transcript<E> {
     let output = compute_updated_state(self.transcript.clone(), &input);
 
     // update state
-    self.round = { self.round.checked_add(1).ok_or(NovaError::InternalTranscriptError)? };
+    self.round = self.round.checked_add(1).ok_or(NovaError::InternalTranscriptError)?;
     self.state.copy_from_slice(&output);
     self.transcript = Keccak256::new();
 
@@ -75,7 +75,7 @@ impl<E: Engine> TranscriptEngineTrait<E> for Keccak256Transcript<E> {
 
   fn absorb<T: TranscriptReprTrait<E::GE>>(&mut self, label: &'static [u8], o: &T) {
     self.transcript.update(label);
-    self.transcript.update(&o.to_transcript_bytes());
+    self.transcript.update(o.to_transcript_bytes());
   }
 
   fn dom_sep(&mut self, bytes: &'static [u8]) {

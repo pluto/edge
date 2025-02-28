@@ -47,7 +47,7 @@ pub struct ProvingParams {
 
 impl FastSerde for ProvingParams {
   /// Initialize ProvingParams from an efficiently serializable data format.
-  fn from_bytes(bytes: &Vec<u8>) -> Result<Self, SerdeByteError> {
+  fn from_bytes(bytes: &[u8]) -> Result<Self, SerdeByteError> {
     let mut cursor = Cursor::new(bytes);
     Self::validate_header(&mut cursor, SerdeByteTypes::ProverParams, 3)?;
 
@@ -77,8 +77,8 @@ impl FastSerde for ProvingParams {
     out.push(3); // num_sections
 
     Self::write_section_bytes(&mut out, 1, &self.aux_params.to_bytes());
-    Self::write_section_bytes(&mut out, 2, &self.vk_digest_primary.to_bytes().to_vec());
-    Self::write_section_bytes(&mut out, 3, &self.vk_digest_secondary.to_bytes().to_vec());
+    Self::write_section_bytes(&mut out, 2, &self.vk_digest_primary.to_bytes());
+    Self::write_section_bytes(&mut out, 3, &self.vk_digest_secondary.to_bytes());
 
     out
   }

@@ -163,7 +163,7 @@ where
     out
   }
 
-  fn from_bytes(bytes: &Vec<u8>) -> Result<Self, SerdeByteError> {
+  fn from_bytes(bytes: &[u8]) -> Result<Self, SerdeByteError> {
     let mut cursor = Cursor::new(bytes);
 
     Self::validate_header(&mut cursor, SerdeByteTypes::UniversalKZGParam, 2)?;

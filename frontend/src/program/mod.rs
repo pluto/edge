@@ -21,7 +21,7 @@ use client_side_prover::{
 };
 use data::{Expanded, InitializedSetup};
 use proof::FoldingProof;
-#[cfg(feature = "timing")] use tracing::trace;
+use tracing::trace;
 use utils::into_input_json;
 
 use super::*;
@@ -135,7 +135,6 @@ impl StepCircuit<F<G1>> for RomCircuit {
 /// Setup function
 pub fn setup(setup_data: &UninitializedSetup) -> PublicParams<E1> {
   // Optionally time the setup stage for the program
-  #[cfg(feature = "timing")]
   let time = std::time::Instant::now();
 
   // TODO: I don't think we want to have to call `initialize_circuit_list` more
@@ -146,7 +145,6 @@ pub fn setup(setup_data: &UninitializedSetup) -> PublicParams<E1> {
   let memory = Memory { circuits, rom: vec![0; setup_data.max_rom_length] }; // Note, `rom` here is not used in setup, only `circuits`
   let public_params = PublicParams::setup(&memory, &*default_ck_hint(), &*default_ck_hint());
 
-  #[cfg(feature = "timing")]
   trace!("`PublicParams::setup()` elapsed: {:?}", time.elapsed());
 
   public_params
@@ -197,7 +195,6 @@ pub async fn run(
 
   let mut memory = Memory { rom: resized_rom.clone(), circuits };
 
-  #[cfg(feature = "timing")]
   let time = std::time::Instant::now();
   for (idx, &op_code) in
     resized_rom.iter().enumerate().take_while(|(_, &op_code)| op_code != u64::MAX)
@@ -280,7 +277,6 @@ pub async fn run(
   }
   // Note, this unwrap cannot fail
   let recursive_snark = recursive_snark_option.unwrap();
-  #[cfg(feature = "timing")]
   trace!("Recursive loop of `program::run()` elapsed: {:?}", time.elapsed());
 
   Ok(recursive_snark?)
@@ -364,14 +360,11 @@ pub fn compress_proof(
   public_params: &PublicParams<E1>,
 ) -> Result<CompressedProof, ProofError> {
   debug!("Setting up `CompressedSNARK`");
-  #[cfg(feature = "timing")]
   let time = std::time::Instant::now();
   let (pk, _vk) = CompressedSNARK::<E1, S1, S2>::setup(public_params)?;
   debug!("Done setting up `CompressedSNARK`");
-  #[cfg(feature = "timing")]
   trace!("`CompressedSNARK::setup` elapsed: {:?}", time.elapsed());
 
-  #[cfg(feature = "timing")]
   let time = std::time::Instant::now();
 
   let proof = FoldingProof {
@@ -380,7 +373,6 @@ pub fn compress_proof(
   };
   debug!("`CompressedSNARK::prove completed!");
 
-  #[cfg(feature = "timing")]
   trace!("`CompressedSNARK::prove` elapsed: {:?}", time.elapsed());
 
   Ok(proof)

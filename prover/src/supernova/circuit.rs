@@ -66,6 +66,7 @@ pub trait StepCircuit<F: PrimeField>: Send + Sync + Clone {
 
   /// Synthesize the circuit for a computation step and return variable
   /// that corresponds to the output of the step `pc_{i+1}` and `z_{i+1}`
+  #[allow(clippy::type_complexity)]
   fn synthesize<CS: ConstraintSystem<F>>(
     &self,
     cs: &mut CS,
@@ -85,6 +86,7 @@ pub trait EnforcingStepCircuit<F: PrimeField>: Send + Sync + Clone + StepCircuit
   /// Delegate synthesis to `StepCircuit::synthesize`, and additionally,
   /// enforce the constraint that program counter `pc`, if supplied, is
   /// equal to the circuit's assigned index.
+  #[allow(clippy::type_complexity)]
   fn enforcing_synthesize<CS: ConstraintSystem<F>>(
     &self,
     cs: &mut CS,
@@ -173,6 +175,7 @@ pub struct SuperNovaAugmentedCircuitInputs<'a, E: Engine> {
 
 impl<'a, E: Engine> SuperNovaAugmentedCircuitInputs<'a, E> {
   /// Create new inputs/witness for the verification circuit
+  #[allow(clippy::too_many_arguments)]
   pub fn new(
     pp_digest: E::Scalar,
     i: E::Base,
@@ -214,6 +217,7 @@ impl<'a, E: Engine, SC: EnforcingStepCircuit<E::Base>> SuperNovaAugmentedCircuit
 
   /// Allocate all witnesses from the augmented function's non-deterministic
   /// inputs. Optional entries are allocated as their default values.
+  #[allow(clippy::type_complexity)]
   fn alloc_witness<CS: ConstraintSystem<<E as Engine>::Base>>(
     &self,
     mut cs: CS,
@@ -358,6 +362,7 @@ impl<'a, E: Engine, SC: EnforcingStepCircuit<E::Base>> SuperNovaAugmentedCircuit
 
   /// Synthesizes non base case and returns the new relaxed `R1CSInstance`
   /// And a boolean indicating if all checks pass
+  #[allow(clippy::too_many_arguments)]
   fn synthesize_non_base_case<CS: ConstraintSystem<<E as Engine>::Base>>(
     &self,
     mut cs: CS,
@@ -443,6 +448,7 @@ impl<'a, E: Engine, SC: EnforcingStepCircuit<E::Base>> SuperNovaAugmentedCircuit
     Ok((U_next, check_pass))
   }
 
+  #[allow(clippy::type_complexity)]
   pub fn synthesize<CS: ConstraintSystem<<E as Engine>::Base>>(
     self,
     cs: &mut CS,
