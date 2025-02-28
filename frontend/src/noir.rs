@@ -12,12 +12,12 @@ use ark_bn254::Fr;
 use bellpepper_core::{
   num::AllocatedNum, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable,
 };
+use client_side_prover::supernova::StepCircuit;
 use ff::PrimeField;
 use tracing::trace;
 
 use super::*;
-
-#[cfg(test)] mod tests;
+use crate::program::SwitchboardWitness;
 
 // TODO: If we deserialize more here and get metadata, we could more easily look at witnesses, etc.
 // Especially if we want to output a constraint to the PC. Using the abi would be handy for
@@ -29,7 +29,8 @@ pub struct NoirProgram {
     deserialize_with = "Program::deserialize_program_base64"
   )]
   pub bytecode: Program<GenericFieldElement<Fr>>,
-  pub witness:  Option<Vec<F<G1>>>,
+  pub witness:  Option<SwitchboardWitness>,
+  pub index:    usize,
   // TODO: To make this more efficient, we could just store an option of the `&mut CS` inside of
   // here so we don't actually need to rebuild it always, though the enforcement for the public
   // inputs is tougher
@@ -46,18 +47,28 @@ impl NoirProgram {
     &self.bytecode.unconstrained_functions
   }
 
-  pub fn set_private_inputs(&mut self, inputs: Vec<F<G1>>) { self.witness = Some(inputs); }
+  pub fn set_inputs(&mut self, switchboard_witness: SwitchboardWitness) {
+    self.witness = Some(switchboard_witness);
+  }
+}
+
+impl StepCircuit<F<G1>> for NoirProgram {
+  // NOTE: +1 for the PC
+  fn arity(&self) -> usize { self.arity() + 1 }
+
+  fn circuit_index(&self) -> usize { self.index }
 
   // TODO: we now need to shift this to use the `z` values as the sole public inputs, the struct
   // should only hold witness
   // TODO: We should check if the constraints for z are actually done properly
   // tell clippy to shut up
   #[allow(clippy::too_many_lines)]
-  pub fn vanilla_synthesize<CS: ConstraintSystem<F<G1>>>(
+  fn synthesize<CS: ConstraintSystem<F<G1>>>(
     &self,
     cs: &mut CS,
+    pc: Option<&AllocatedNum<F<G1>>>,
     z: &[AllocatedNum<F<G1>>],
-  ) -> Result<Vec<AllocatedNum<F<G1>>>, SynthesisError> {
+  ) -> Result<(Option<AllocatedNum<F<G1>>>, Vec<AllocatedNum<F<G1>>>), SynthesisError> {
     dbg!(z);
     let mut acvm = if self.witness.is_some() {
       Some(ACVM::new(
@@ -105,7 +116,7 @@ impl NoirProgram {
     // Set up private inputs
     self.circuit().private_parameters.iter().for_each(|witness| {
       let f = self.witness.as_ref().map(|inputs| {
-        let f = convert_to_acir_field(inputs[witness.as_usize()]);
+        let f = convert_to_acir_field(inputs.witness[witness.as_usize()]);
         acvm.as_mut().unwrap().overwrite_witness(*witness, f);
         f
       });
@@ -193,8 +204,23 @@ impl NoirProgram {
       z_out.push(allocated_vars.get(ret).unwrap().clone());
     }
 
-    Ok(dbg!(z_out))
+    // TODO: fix the pc
+    Ok((z_out.last().cloned(), z_out))
   }
+  // TODO: fix the pc
+  // fn synthesize<CS: ConstraintSystem<F<G1>>>(
+  //   &self,
+  //   cs: &mut CS,
+  //   pc: Option<&AllocatedNum<F<G1>>>,
+  //   z: &[AllocatedNum<F<G1>>],
+  // ) -> Result<(Option<AllocatedNum<F<G1>>>, Vec<AllocatedNum<F<G1>>>), SynthesisError> {
+  //   let rom_index = &z[self.arity()]; // jump to where we pushed pc data into CS
+  //   let allocated_rom = &z[self.arity() + 1..]; // jump to where we pushed rom data into C
+  //   let mut circuit_constraints = self.vanilla_synthesize(cs, z)?;
+  //   circuit_constraints.push(rom_index_next);
+  //   circuit_constraints.extend(z[self.arity() + 1..].iter().cloned());
+  //   Ok((Some(pc_next), circuit_constraints))
+  // }
 }
 
 fn convert_to_halo2_field(f: GenericFieldElement<Fr>) -> F<G1> {
@@ -209,4 +235,20 @@ fn convert_to_acir_field(f: F<G1>) -> GenericFieldElement<Fr> {
   let mut bytes = f.to_bytes();
   bytes.reverse();
   GenericFieldElement::from_be_bytes_reduce(&bytes)
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_conversions() {
+    let f = F::<G1>::from(5);
+    let acir_f = convert_to_acir_field(f);
+    assert_eq!(acir_f, GenericFieldElement::from_repr(Fr::from(5)));
+
+    let f = GenericFieldElement::from_repr(Fr::from(3));
+    let halo2_f = convert_to_halo2_field(f);
+    assert_eq!(halo2_f, F::<G1>::from(3));
+  }
 }

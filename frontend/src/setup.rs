@@ -29,10 +29,7 @@ use client_side_prover::{
   traits::{Dual, Engine},
 };
 
-use crate::{
-  errors::ProofError, program, program::data::R1CSType, AuxParams, ProverKey, UninitializedSetup,
-  WitnessGeneratorType, E1, S1, S2,
-};
+use crate::{error::ProofError, program, AuxParams, ProverKey, E1, S1, S2};
 
 /// Proving parameters
 #[derive(Debug)]
@@ -102,29 +99,29 @@ impl ProvingParams {
   }
 }
 
-/// Create a setup for a given list of R1CS files including the necessary
-/// setup for compressed proving.
-///
-/// # Arguments
-/// - `r1cs_files`: A list of r1cs files that are accessible by the program using the setup
-///
-/// # Returns
-/// * `Result<Vec<u8>, ProofError>` - Bytes ready to be written to disk
-pub fn setup(r1cs_files: &[R1CSType], rom_length: usize) -> Vec<u8> {
-  let setup_data = UninitializedSetup {
-    r1cs_types:              r1cs_files.to_vec(),
-    witness_generator_types: vec![WitnessGeneratorType::Browser; r1cs_files.len()],
-    max_rom_length:          rom_length,
-  };
+// /// Create a setup for a given list of R1CS files including the necessary
+// /// setup for compressed proving.
+// ///
+// /// # Arguments
+// /// - `r1cs_files`: A list of r1cs files that are accessible by the program using the setup
+// ///
+// /// # Returns
+// /// * `Result<Vec<u8>, ProofError>` - Bytes ready to be written to disk
+// pub fn setup(r1cs_files: &[R1CSType], rom_length: usize) -> Vec<u8> {
+//   let setup_data = UninitializedSetup {
+//     r1cs_types:              r1cs_files.to_vec(),
+//     witness_generator_types: vec![WitnessGeneratorType::Browser; r1cs_files.len()],
+//     max_rom_length:          rom_length,
+//   };
 
-  let public_params = program::setup(&setup_data);
-  let (pk, _vk) = CompressedSNARK::<E1, S1, S2>::setup(&public_params).unwrap();
-  let (_, aux_params) = public_params.into_parts();
+//   let public_params = program::setup(&setup_data);
+//   let (pk, _vk) = CompressedSNARK::<E1, S1, S2>::setup(&public_params).unwrap();
+//   let (_, aux_params) = public_params.into_parts();
 
-  ProvingParams {
-    aux_params,
-    vk_digest_primary: pk.pk_primary.vk_digest,
-    vk_digest_secondary: pk.pk_secondary.vk_digest,
-  }
-  .to_bytes()
-}
+//   ProvingParams {
+//     aux_params,
+//     vk_digest_primary: pk.pk_primary.vk_digest,
+//     vk_digest_secondary: pk.pk_secondary.vk_digest,
+//   }
+//   .to_bytes()
+// }

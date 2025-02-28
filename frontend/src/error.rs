@@ -18,30 +18,6 @@
 //! - `Bincode`: Represents a Bincode serialization or deserialization error.
 use thiserror::Error;
 
-#[cfg(not(target_arch = "wasm32"))]
-#[derive(Debug, Error)]
-/// Wrapper for circom_witnesscalc::Error since it doesn't implement display
-pub enum WitnessCalcError {
-  /// The error is a circom_witnesscalc::Error
-  Circom(circom_witnesscalc::Error),
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-impl std::fmt::Display for WitnessCalcError {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{:?}", self) }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-impl From<circom_witnesscalc::Error> for ProofError {
-  fn from(err: circom_witnesscalc::Error) -> ProofError {
-    ProofError::WitnessCalc(WitnessCalcError::Circom(err))
-  }
-}
-
-impl From<Box<bincode::ErrorKind>> for ProofError {
-  fn from(err: Box<bincode::ErrorKind>) -> ProofError { ProofError::Bincode(*err) }
-}
-
 /// Represents the various error conditions that can occur within the `proofs`
 /// crate.
 #[derive(Debug, Error)]
@@ -70,18 +46,13 @@ pub enum ProofError {
   #[error(transparent)]
   Parse(#[from] num_bigint::ParseBigIntError),
 
-  /// The error is a WitnessCalcError
-  #[cfg(not(target_arch = "wasm32"))]
-  #[error(transparent)]
-  WitnessCalc(#[from] WitnessCalcError),
-
   /// The error is a missing header section
   #[error("Missing header section")]
   MissingSection,
 
   /// The error is a bincode::ErrorKind
   #[error(transparent)]
-  Bincode(#[from] bincode::ErrorKind),
+  Bincode(#[from] Box<bincode::ErrorKind>),
 
   /// The error is a client_side_prover::supernova::error::SuperNovaError
   #[error(transparent)]

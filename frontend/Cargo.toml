@@ -31,9 +31,6 @@ wasm-bindgen        ="0.2.87"
 js-sys              ="0.3.64"
 wasm-bindgen-futures="0.4.37"
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-circom_witnesscalc={ git="https://github.com/pluto/circom-witnesscalc" } # Fork is needed apparently??
-
 [dev-dependencies]
 tracing-test="0.2.5"
 tempdir     ="0.3.7"

@@ -35,7 +35,6 @@
 
 use std::{collections::HashMap, path::PathBuf, str::FromStr};
 
-use circom::CircomCircuit;
 use client_side_prover::{
   provider::GrumpkinEngine,
   spartan::batched::BatchedRelaxedR1CSSNARK,
@@ -47,18 +46,13 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::{debug, error, info};
 
-use crate::{
-  errors::ProofError,
-  program::data::{InstanceParams, Online, R1CSType, UninitializedSetup, WitnessGeneratorType},
-};
+use crate::error::ProofError;
 
-pub mod circom;
-pub mod errors;
+pub mod error;
 pub mod noir;
 pub mod program;
 pub mod proof;
 pub mod setup;
-#[cfg(test)] pub(crate) mod tests;
 
 /// Represents the first elliptic curve engine used in the proof system.
 pub type E1 = client_side_prover::provider::Bn256EngineKZG;
