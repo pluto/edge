@@ -162,19 +162,13 @@ impl StepCircuit<F<G1>> for NoirProgram {
 
       let f = self.witness.as_ref().map(|inputs| {
         trace!("Witness map size: {}", inputs.witness.len());
-        if witness.as_usize() < inputs.witness.len() {
-          let f = convert_to_acir_field(inputs.witness[witness.as_usize()]);
-          trace!("Private input value: {:?}", f);
-          acvm.as_mut().unwrap().overwrite_witness(*witness, f);
-          f
-        } else {
-          trace!(
-            "ERROR: Witness index {} out of bounds (max: {})",
-            witness.as_usize(),
-            inputs.witness.len() - 1
-          );
-          GenericFieldElement::zero()
-        }
+        // TODO: This is a bit hacky. We need to subtract the registers length from the witness
+        // index, and this assumes registers is the first parameter.
+        let f =
+          convert_to_acir_field(inputs.witness[witness.as_usize() - registers_length as usize]);
+        trace!("Private input value: {:?}", f);
+        acvm.as_mut().unwrap().overwrite_witness(*witness, f);
+        f
       });
 
       let var =
