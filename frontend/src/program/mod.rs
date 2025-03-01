@@ -86,7 +86,8 @@ pub fn run(switchboard: &Switchboard) -> Result<RecursiveSNARK<E1>, ProofError> 
     info!("Step {} of {} witnesses", idx, switchboard.witnesses.len());
     debug!("Program counter = {:?}", switchboard_witness.pc);
 
-    let circuit_primary = switchboard.primary_circuit(switchboard_witness.pc);
+    let mut circuit_primary = switchboard.primary_circuit(switchboard_witness.pc);
+    circuit_primary.witness = Some(switchboard_witness.clone());
     let circuit_secondary = switchboard.secondary_circuit();
 
     let mut recursive_snark = recursive_snark_option.unwrap_or_else(|| {

@@ -7,9 +7,9 @@ use super::*;
 fn test_ivc() {
   let circuit = square_zeroth();
   let witnesses = vec![
-    SwitchboardWitness { witness: vec![], pc: 0 },
-    SwitchboardWitness { witness: vec![], pc: 0 },
-    SwitchboardWitness { witness: vec![], pc: 0 },
+    SwitchboardWitness { witness: vec![F::<G1>::from(0)], pc: 0 },
+    SwitchboardWitness { witness: vec![F::<G1>::from(0)], pc: 0 },
+    SwitchboardWitness { witness: vec![F::<G1>::from(0)], pc: 0 },
   ];
 
   let memory = Switchboard {

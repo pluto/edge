@@ -51,7 +51,7 @@ criterion={ version="0.5", features=["html_reports"] }
 # dev dependencies
 flate2            ="1.0"
 sha2              ="0.10.7"
-tracing-test      ="0.2.4"
+tracing-test      ={ version="0.2.4", features = ["no-env-filter"] }
 expect-test       ="1.4.1"
 anyhow            ="1.0.72"
 tap               ="1.0.1"

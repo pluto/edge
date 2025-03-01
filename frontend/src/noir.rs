@@ -16,6 +16,7 @@ use bellpepper_core::{
 };
 use client_side_prover::supernova::StepCircuit;
 use ff::PrimeField;
+use noirc_abi::{Abi, AbiParameter, AbiType, AbiVisibility};
 use tracing::trace;
 
 use super::*;
@@ -29,7 +30,7 @@ pub struct NoirProgram {
   #[serde(rename = "noir_version")]
   pub version:       String,
   pub hash:          u64,
-  pub abi:           NoirAbi,
+  pub abi:           Abi,
   #[serde(
     serialize_with = "Program::serialize_program_base64",
     deserialize_with = "Program::deserialize_program_base64"
@@ -45,49 +46,8 @@ pub struct NoirProgram {
   pub index:         usize,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct NoirAbi {
-  pub parameters:  Vec<NoirParameter>,
-  pub return_type: NoirReturnType,
-  pub error_types: HashMap<String, String>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct NoirParameter {
-  pub name:           String,
-  #[serde(rename = "type")]
-  pub parameter_type: NoirType,
-  pub visibility:     String,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct NoirReturnType {
-  pub abi_type:   NoirType,
-  pub visibility: String,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug)]
-#[serde(untagged)]
-pub enum NoirType {
-  Simple {
-    kind: String,
-  },
-  Array {
-    kind:         String,
-    length:       usize,
-    #[serde(rename = "type")]
-    element_type: Box<NoirType>,
-  },
-  Tuple {
-    kind:   String,
-    fields: Vec<NoirType>,
-  },
-}
-
 impl NoirProgram {
   pub fn new(bin: &[u8]) -> Self { serde_json::from_slice(bin).unwrap() }
-
-  pub fn arity(&self) -> usize { self.circuit().public_parameters.0.len() }
 
   pub fn circuit(&self) -> &Circuit<GenericFieldElement<Fr>> { &self.bytecode.functions[0] }
 
@@ -101,15 +61,11 @@ impl NoirProgram {
 }
 
 impl StepCircuit<F<G1>> for NoirProgram {
-  // NOTE: +1 for the PC
-  fn arity(&self) -> usize { self.arity() + 1 }
+  // TODO: This is a bit hacky. We need to add 1 for the PC
+  fn arity(&self) -> usize { self.circuit().public_parameters.0.len() }
 
   fn circuit_index(&self) -> usize { self.index }
 
-  // TODO: we now need to shift this to use the `z` values as the sole public inputs, the struct
-  // should only hold witness
-  // TODO: We should check if the constraints for z are actually done properly
-  // tell clippy to shut up
   #[allow(clippy::too_many_lines)]
   fn synthesize<CS: ConstraintSystem<F<G1>>>(
     &self,
@@ -117,8 +73,20 @@ impl StepCircuit<F<G1>> for NoirProgram {
     pc: Option<&AllocatedNum<F<G1>>>,
     z: &[AllocatedNum<F<G1>>],
   ) -> Result<(Option<AllocatedNum<F<G1>>>, Vec<AllocatedNum<F<G1>>>), SynthesisError> {
-    dbg!(z);
+    trace!("Synthesizing NoirProgram with {} inputs", z.len());
+    trace!("Inner pc:  {pc:?}");
+    trace!("Circuit index: {}", self.index);
+    trace!("ABI parameters: {:?}", self.abi.parameters);
+    trace!("ABI return type: {:?}", self.abi.return_type);
+    trace!("Private parameters count: {}", self.circuit().private_parameters.len());
+    trace!("Public parameters count: {}", self.circuit().public_parameters.0.len());
+    trace!("Return values count: {}", self.circuit().return_values.0.len());
+
+    dbg!(&self);
+
+    // Initialize ACVM with the circuit
     let mut acvm = if self.witness.is_some() {
+      trace!("Witness is present, initializing ACVM");
       Some(ACVM::new(
         &StubbedBlackBoxSolver(false),
         &self.circuit().opcodes,
@@ -127,63 +95,180 @@ impl StepCircuit<F<G1>> for NoirProgram {
         &[],
       ))
     } else {
+      trace!("No witness provided, skipping ACVM initialization");
       None
     };
 
-    // TODO: This is a bit hacky. For NIVC folding in particular:
-    assert_eq!(self.circuit().return_values.0.len() - 1, self.circuit().public_parameters.0.len());
-
-    // TODO: we could probably avoid this but i'm lazy
     // Create a map to track allocated variables for the cs
     let mut allocated_vars: HashMap<Witness, AllocatedNum<F<G1>>> = HashMap::new();
 
-    // TODO: Hacking here to get the first index of public, assuming the come in a block. This is
-    // really dirty too
-    let num_private_inputs = dbg!(self.circuit().private_parameters.len());
+    // Find the registers parameter in the ABI
+    let registers_param = match self.abi.parameters.iter().find(|p| p.name == "registers") {
+      Some(param) => {
+        trace!("Found registers parameter: {:?}", param);
+        param
+      },
+      None => {
+        trace!("ERROR: No 'registers' parameter found in ABI");
+        trace!(
+          "Available parameters: {:?}",
+          self.abi.parameters.iter().map(|p| &p.name).collect::<Vec<_>>()
+        );
+        panic!("Expected to find 'registers' parameter in ABI");
+      },
+    };
 
-    // Set up public inputs
-    self.circuit().public_parameters.0.iter().for_each(|witness| {
-      println!("public instance: {witness:?}");
-      let var = z[witness.as_usize() - num_private_inputs].clone();
-      if self.witness.is_some() {
-        trace!("overwriting public {witness:?} with {var:?}");
-        // TODO: This is a bit hacky and assumes private inputs come first. I don't like that
-        acvm
-          .as_mut()
-          .unwrap()
-          .overwrite_witness(*witness, convert_to_acir_field(var.get_value().unwrap()));
-      }
-      // TODO: Fix unwrap
-      // Alloc 1 for now and update later as needed
-      // let var = AllocatedNum::alloc(&mut *cs, || Ok(F::<G1>::ONE)).unwrap();
-      // println!("AllocatedNum pub input: {var:?}");
+    // Get the length of registers array
+    let registers_length = match &registers_param.typ {
+      AbiType::Array { length, .. } => {
+        trace!("Registers is an Array type with length {}", length);
+        *length
+      },
+      _ => {
+        trace!("ERROR: Unexpected registers type: {:?}", registers_param.typ);
+        panic!("Expected 'registers' to be an array type, found {:?}", registers_param.typ);
+      },
+    };
 
-      allocated_vars.insert(*witness, var);
-    });
+    trace!("Using registers length: {}", registers_length);
 
-    // Set up private inputs
-    self.circuit().private_parameters.iter().for_each(|witness| {
+    // Process private inputs first
+    trace!("Processing {} private inputs", self.circuit().private_parameters.len());
+
+    // Get only the private parameters from the ABI
+    let private_params: Vec<&AbiParameter> =
+      self.abi.parameters.iter().filter(|p| p.visibility == AbiVisibility::Private).collect();
+
+    trace!("Found {} private parameters in ABI", private_params.len());
+
+    for (i, witness) in self.circuit().private_parameters.iter().enumerate() {
+      let param = if i < private_params.len() {
+        private_params[i]
+      } else {
+        trace!(
+          "WARNING: Private parameter index {} exceeds private ABI parameters length {}",
+          i,
+          private_params.len()
+        );
+        continue;
+      };
+
+      trace!(
+        "Processing private input '{}' (witness {:?}) of type {:?}",
+        param.name,
+        witness,
+        param.typ
+      );
+
       let f = self.witness.as_ref().map(|inputs| {
-        let f = convert_to_acir_field(inputs.witness[witness.as_usize()]);
-        acvm.as_mut().unwrap().overwrite_witness(*witness, f);
-        f
+        trace!("Witness map size: {}", inputs.witness.len());
+        if witness.as_usize() < inputs.witness.len() {
+          let f = convert_to_acir_field(inputs.witness[witness.as_usize()]);
+          trace!("Private input value: {:?}", f);
+          acvm.as_mut().unwrap().overwrite_witness(*witness, f);
+          f
+        } else {
+          trace!(
+            "ERROR: Witness index {} out of bounds (max: {})",
+            witness.as_usize(),
+            inputs.witness.len() - 1
+          );
+          GenericFieldElement::zero()
+        }
       });
-      let var = AllocatedNum::alloc(&mut *cs, || Ok(convert_to_halo2_field(f.unwrap_or_default())))
-        .unwrap();
-      allocated_vars.insert(*witness, var);
-    });
 
+      let var =
+        AllocatedNum::alloc(&mut cs.namespace(|| format!("private_input_{}", param.name)), || {
+          let value = convert_to_halo2_field(f.unwrap_or_default());
+          trace!("Allocated private input '{}' with value: {:?}", param.name, value);
+          Ok(value)
+        })?;
+
+      allocated_vars.insert(*witness, var);
+      trace!(
+        "Added private input witness {:?} to allocated_vars (size now: {})",
+        witness,
+        allocated_vars.len()
+      );
+    }
+
+    // Process public inputs (registers) from z
+    trace!(
+      "Processing {} public inputs (registers) from z (z.len = {})",
+      self.circuit().public_parameters.0.len(),
+      z.len()
+    );
+
+    if z.len() != registers_length as usize {
+      trace!(
+        "WARNING: z.len() ({}) is not equal to registers_length ({})",
+        z.len(),
+        registers_length
+      );
+    }
+
+    for (i, witness) in self.circuit().public_parameters.0.iter().enumerate() {
+      if i < registers_length as usize && i < z.len() {
+        trace!("Processing public register at index {} (witness {:?})", i, witness);
+
+        let var = z[i].clone();
+        let value_str = var.get_value().map_or("None".to_string(), |v| format!("{:?}", v));
+        trace!("Public input value from z[{}]: {}", i, value_str);
+
+        if self.witness.is_some() {
+          if let Some(value) = var.get_value() {
+            trace!("Overwriting public witness {:?} with value from z: {:?}", witness, value);
+            acvm.as_mut().unwrap().overwrite_witness(*witness, convert_to_acir_field(value));
+          } else {
+            trace!("WARNING: No value available for public input at index {}", i);
+          }
+        }
+
+        allocated_vars.insert(*witness, var);
+        trace!(
+          "Added public input witness {:?} to allocated_vars (size now: {})",
+          witness,
+          allocated_vars.len()
+        );
+      } else if i >= registers_length as usize {
+        trace!(
+          "Skipping public parameter at index {} as it exceeds registers_length {}",
+          i,
+          registers_length
+        );
+      } else {
+        trace!("ERROR: Public parameter index {} exceeds z.len() {}", i, z.len());
+      }
+    }
+
+    // Execute ACVM to get witness values if we have inputs
     let acir_witness_map = if self.witness.is_some() {
-      let _status = acvm.as_mut().unwrap().solve();
-      Some(acvm.unwrap().finalize())
+      trace!("Executing ACVM solve...");
+      let status = acvm.as_mut().unwrap().solve();
+      trace!("ACVM solve status: {:?}", status);
+      let witness_map = acvm.unwrap().finalize();
+      Some(witness_map)
     } else {
+      trace!("Skipping ACVM execution (no witness)");
       None
     };
 
+    // Helper function to get witness values
     let get_witness_value = |witness: &Witness| -> F<G1> {
-      acir_witness_map.as_ref().map_or(F::<G1>::ONE, |map| {
-        map.get(witness).map_or(F::<G1>::ONE, |value| convert_to_halo2_field(*value))
-      })
+      let result = acir_witness_map.as_ref().map_or(F::<G1>::ONE, |map| {
+        map.get(witness).map_or_else(
+          || {
+            trace!("WARNING: Witness {witness:?} not found in ACVM witness map, using default");
+            F::<G1>::ONE
+          },
+          |value| {
+            let converted = convert_to_halo2_field(*value);
+            trace!("Got witness {:?} value: {:?}", witness, converted);
+            converted
+          },
+        )
+      });
+      result
     };
 
     // Helper to get or create a variable for a witness
@@ -193,17 +278,27 @@ impl StepCircuit<F<G1>> for NoirProgram {
                    gate_idx: usize|
      -> Result<Variable, SynthesisError> {
       if let Some(var) = allocated_vars.get(witness) {
+        trace!("Using existing variable for witness {:?}", witness);
         Ok(var.get_variable())
       } else {
+        trace!("Allocating new variable for witness {:?} in gate {}", witness, gate_idx);
         let var = AllocatedNum::alloc(cs.namespace(|| format!("aux_{gate_idx}")), || {
-          Ok(get_witness_value(witness))
+          let value = get_witness_value(witness);
+          trace!("Allocated auxiliary variable with value: {:?}", value);
+          Ok(value)
         })?;
         allocated_vars.insert(*witness, var.clone());
+        trace!(
+          "Added auxiliary witness {:?} to allocated_vars (size now: {})",
+          witness,
+          allocated_vars.len()
+        );
         Ok(var.get_variable())
       }
     };
 
     // Process gates
+    trace!("Processing {} gates", self.circuit().opcodes.len());
     for (gate_idx, opcode) in self.circuit().opcodes.iter().enumerate() {
       if let Opcode::AssertZero(gate) = opcode {
         // Initialize empty linear combinations for each part of our R1CS constraint
@@ -244,31 +339,81 @@ impl StepCircuit<F<G1>> for NoirProgram {
           |_| right_terms.clone(),
           |_| final_terms,
         );
+      } else {
+        panic!("non-AssertZero gate {} of type {:?}", gate_idx, opcode);
       }
     }
 
-    let mut z_out = vec![];
-    for ret in &self.circuit().return_values.0 {
-      z_out.push(allocated_vars.get(ret).unwrap().clone());
+    // Prepare output values
+    trace!("Preparing return values");
+    let mut return_values = vec![];
+    for (i, ret) in self.circuit().return_values.0.iter().enumerate() {
+      trace!("Processing return value {} (witness {:?})", i, ret);
+      if let Some(var) = allocated_vars.get(ret) {
+        let value_str = var.get_value().map_or("None".to_string(), |v| format!("{:?}", v));
+        trace!("Found allocated variable for return value {}: {}", i, value_str);
+        return_values.push(var.clone());
+      } else {
+        trace!("ERROR: Return value {} (witness {:?}) not found in allocated variables", i, ret);
+        trace!("Available witnesses: {:?}", allocated_vars.keys().collect::<Vec<_>>());
+        return Err(SynthesisError::AssignmentMissing);
+      }
     }
 
-    // TODO: fix the pc
-    Ok((z_out.last().cloned(), z_out))
+    trace!("Return values count: {}", return_values.len());
+    trace!("Return values witnesses: {:?}", self.circuit().return_values.0);
+
+    // Check if the return type is a struct as expected
+    if let Some(return_type) = &self.abi.return_type {
+      if let AbiType::Struct { fields, path } = &return_type.abi_type {
+        trace!("Return type is a struct: {} with {} fields", path, fields.len());
+
+        if path != "FoldingIO" {
+          panic!("Expected return type to be FoldingIO struct, found {}", path);
+        }
+
+        // Find the registers field in the struct and get its length
+        let registers_length = fields
+          .iter()
+          .find(|(name, _)| name == "registers")
+          .map(|(_, typ)| match typ {
+            AbiType::Array { length, .. } => *length,
+            _ => panic!("Expected registers to be an array type, found {:?}", typ),
+          })
+          .unwrap_or_else(|| panic!("Expected 'registers' field in FoldingIO struct"));
+
+        trace!("registers_length: {}", registers_length);
+
+        // The next_pc is after all the register values
+        let next_pc_index = registers_length as usize;
+        trace!("next_pc_index in flattened return values: {}", next_pc_index);
+
+        if next_pc_index < return_values.len() {
+          let next_pc = Some(return_values[next_pc_index].clone());
+          trace!("Using return value at index {} as next_pc", next_pc_index);
+
+          trace!(
+            "Synthesis complete, returning next_pc and {} return values",
+            return_values[..registers_length as usize].to_vec().len()
+          );
+          return Ok((next_pc, return_values[..registers_length as usize].to_vec()));
+        } else {
+          trace!(
+            "ERROR: next_pc index {} is out of bounds for return_values length {}",
+            next_pc_index,
+            return_values.len()
+          );
+          panic!("next_pc index out of bounds");
+        }
+      } else {
+        trace!("ERROR: Return type is not a struct: {:?}", return_type.abi_type);
+        panic!("Expected return type to be a struct, found {:?}", return_type.abi_type);
+      }
+    } else {
+      trace!("ERROR: No return type specified in ABI");
+      panic!("Expected return type to be specified");
+    }
   }
-  // TODO: fix the pc
-  // fn synthesize<CS: ConstraintSystem<F<G1>>>(
-  //   &self,
-  //   cs: &mut CS,
-  //   pc: Option<&AllocatedNum<F<G1>>>,
-  //   z: &[AllocatedNum<F<G1>>],
-  // ) -> Result<(Option<AllocatedNum<F<G1>>>, Vec<AllocatedNum<F<G1>>>), SynthesisError> {
-  //   let rom_index = &z[self.arity()]; // jump to where we pushed pc data into CS
-  //   let allocated_rom = &z[self.arity() + 1..]; // jump to where we pushed rom data into C
-  //   let mut circuit_constraints = self.vanilla_synthesize(cs, z)?;
-  //   circuit_constraints.push(rom_index_next);
-  //   circuit_constraints.extend(z[self.arity() + 1..].iter().cloned());
-  //   Ok((Some(pc_next), circuit_constraints))
-  // }
 }
 
 fn convert_to_halo2_field(f: GenericFieldElement<Fr>) -> F<G1> {
@@ -298,5 +443,34 @@ mod tests {
     let f = GenericFieldElement::from_repr(Fr::from(3));
     let halo2_f = convert_to_halo2_field(f);
     assert_eq!(halo2_f, F::<G1>::from(3));
+  }
+
+  #[test]
+  fn test_deserialize_abi() {
+    let json_path = "../examples/add_external/target/add_external.json";
+    let json_data = std::fs::read(json_path).expect("Failed to read add_external.json");
+
+    let program: NoirProgram =
+      serde_json::from_slice(&json_data).expect("Failed to deserialize add_external.json");
+
+    // Verify basic structure
+    assert_eq!(program.version, "1.0.0-beta.2+1a2a08cbcb68646ff1aaef383cfc1798933c1355");
+    assert_eq!(program.hash, 2789485860577127199);
+
+    // Verify parameters
+    assert_eq!(program.abi.parameters.len(), 3);
+    assert_eq!(program.abi.parameters[0].name, "external");
+    assert_eq!(program.abi.parameters[1].name, "registers");
+    assert_eq!(program.abi.parameters[2].name, "next_pc");
+
+    // Verify return type
+    if let AbiType::Struct { fields, path } = &program.abi.return_type.as_ref().unwrap().abi_type {
+      assert_eq!(fields.len(), 2);
+      assert_eq!(path, "FoldingIO");
+      assert_eq!(fields[0].0, "registers");
+      assert_eq!(fields[1].0, "next_pc");
+    } else {
+      panic!("Expected tuple return type, got {:?}", program.abi.return_type);
+    }
   }
 }

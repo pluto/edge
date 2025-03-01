@@ -41,7 +41,7 @@ dependencies = [
  "acvm_blackbox_solver",
  "brillig_vm",
  "fxhash",
- "indexmap",
+ "indexmap 1.9.3",
  "serde",
  "thiserror",
  "tracing",
@@ -641,6 +641,7 @@ dependencies = [
  "hex",
  "itertools 0.13.0",
  "js-sys",
+ "noirc_abi",
  "num-bigint 0.4.6",
  "serde",
  "serde-wasm-bindgen",
@@ -869,6 +870,12 @@ dependencies = [
  "quote",
  "syn 2.0.98",
 ]
+
+[[package]]
+name = "equivalent"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 
 [[package]]
 name = "errno"
@@ -1177,6 +1184,14 @@ dependencies = [
  "hashbrown 0.12.3",
 ]
 
+version = "2.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c9c992b02b5b4c94ea26e32fe5bccb7aa7d9f390ab5c1221ff895bc7ea8b652"
+dependencies = [
+ "equivalent",
+ "hashbrown 0.15.2",
+]
+
 [[package]]
 name = "is-terminal"
 version = "0.4.13"
@@ -1187,6 +1202,11 @@ dependencies = [
  "libc",
  "windows-sys 0.52.0",
 ]
+
+[[package]]
+name = "iter-extended"
+version = "1.0.0-beta.2"
+source = "git+https://github.com/noir-lang/noir?rev=v1.0.0-beta.2#1a2a08cbcb68646ff1aaef383cfc1798933c1355"
 
 [[package]]
 name = "itertools"
@@ -1350,6 +1370,31 @@ dependencies = [
  "pasta_curves",
  "serde",
  "trait-set",
+]
+
+[[package]]
+name = "noirc_abi"
+version = "1.0.0-beta.2"
+source = "git+https://github.com/noir-lang/noir?rev=v1.0.0-beta.2#1a2a08cbcb68646ff1aaef383cfc1798933c1355"
+dependencies = [
+ "acvm",
+ "iter-extended",
+ "noirc_printable_type",
+ "num-bigint 0.4.6",
+ "num-traits",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "toml",
+]
+
+[[package]]
+name = "noirc_printable_type"
+version = "1.0.0-beta.2"
+source = "git+https://github.com/noir-lang/noir?rev=v1.0.0-beta.2#1a2a08cbcb68646ff1aaef383cfc1798933c1355"
+dependencies = [
+ "acvm",
+ "serde",
 ]
 
 [[package]]
@@ -1997,6 +2042,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_spanned"
+version = "0.6.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87607cb1398ed59d48732e575a4c28a7a8ebf2454b964fe3f224f2afc07909e1"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "sha2"
 version = "0.10.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2261,6 +2315,40 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.98",
+]
+
+[[package]]
+name = "toml"
+version = "0.7.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd79e69d3b627db300ff956027cc6c3798cef26d22526befdfcd12feeb6d2257"
+dependencies = [
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "toml_edit",
+]
+
+[[package]]
+name = "toml_datetime"
+version = "0.6.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0dd7358ecb8fc2f8d014bf86f6f638ce72ba252a2c3a2572f2a795f1d23efb41"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "toml_edit"
+version = "0.19.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b5bb770da30e5cbfde35a2d7b9b8a2c4b8ef89548a7a6aeab5c9a576e3e7421"
+dependencies = [
+ "indexmap 2.7.1",
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "winnow",
 ]
 
 [[package]]
@@ -2631,6 +2719,15 @@ name = "windows_x86_64_msvc"
 version = "0.52.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
+
+[[package]]
+name = "winnow"
+version = "0.5.40"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f593a95398737aeed53e489c785df13f3618e41dbcd6718c6addbf1395aa6876"
+dependencies = [
+ "memchr",
+]
 
 [[package]]
 name = "wyz"
