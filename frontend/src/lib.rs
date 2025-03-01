@@ -33,8 +33,6 @@
 //! - `ProverKey`: Represents the prover key needed to create a `CompressedSNARK`.
 //! - `VerifierKey`: Represents the verifier key needed to create a `CompressedSNARK`.
 
-use std::{collections::HashMap, path::PathBuf, str::FromStr};
-
 use client_side_prover::{
   provider::GrumpkinEngine,
   spartan::batched::BatchedRelaxedR1CSSNARK,
@@ -43,8 +41,7 @@ use client_side_prover::{
 };
 use ff::Field;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use tracing::{debug, error, info};
+use tracing::{debug, info};
 
 use crate::error::ProofError;
 
@@ -54,25 +51,8 @@ pub mod program;
 pub mod proof;
 pub mod setup;
 
-/// Represents the first elliptic curve engine used in the proof system.
-pub type E1 = client_side_prover::provider::Bn256EngineKZG;
-/// Represents the second elliptic curve engine used in the proof system.
-pub type E2 = GrumpkinEngine;
-/// Represents the group associated with the first elliptic curve engine.
-pub type G1 = <E1 as Engine>::GE;
-/// Represents the group associated with the second elliptic curve engine.
-pub type G2 = <E2 as Engine>::GE;
-/// Represents the evaluation engine for the first elliptic curve.
-pub type EE1 =
-  client_side_prover::provider::hyperkzg::EvaluationEngine<halo2curves::bn256::Bn256, E1>;
-/// Represents the evaluation engine for the second elliptic curve.
-pub type EE2 = client_side_prover::provider::ipa_pc::EvaluationEngine<E2>;
-/// Represents the SNARK for the first elliptic curve.
-pub type S1 = BatchedRelaxedR1CSSNARK<E1, EE1>;
-/// Represents the SNARK for the second elliptic curve.
-pub type S2 = BatchedRelaxedR1CSSNARK<E2, EE2>;
-/// Represents the scalar field associated with a given group.
-pub type F<G> = <G as Group>::Scalar;
+/// Represents the scalar field for the primary curve (bn254)
+pub type Scalar = <G1 as Group>::Scalar;
 
 /// Represents the params needed to create `PublicParams` alongside the
 /// circuits' R1CSs. Specifically typed to the `proofs` crate choices of curves
@@ -84,3 +64,18 @@ pub type ProverKey = client_side_prover::supernova::snark::ProverKey<E1, S1, S2>
 /// The `VerifierKey` needed to create a `CompressedSNARK` using the `proofs`
 /// crate choices of curves and engines.
 pub type VerifierKey = client_side_prover::supernova::snark::VerifierKey<E1, S1, S2>;
+
+/// Represents the first elliptic curve engine used in the proof system.
+type E1 = client_side_prover::provider::Bn256EngineKZG;
+/// Represents the second elliptic curve engine used in the proof system.
+type E2 = GrumpkinEngine;
+/// Represents the group associated with the first elliptic curve engine.
+type G1 = <E1 as Engine>::GE;
+/// Represents the evaluation engine for the first elliptic curve.
+type EE1 = client_side_prover::provider::hyperkzg::EvaluationEngine<halo2curves::bn256::Bn256, E1>;
+/// Represents the evaluation engine for the second elliptic curve.
+type EE2 = client_side_prover::provider::ipa_pc::EvaluationEngine<E2>;
+/// Represents the SNARK for the first elliptic curve.
+type S1 = BatchedRelaxedR1CSSNARK<E1, EE1>;
+/// Represents the SNARK for the second elliptic curve.
+type S2 = BatchedRelaxedR1CSSNARK<E2, EE2>;

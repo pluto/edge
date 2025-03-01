@@ -1,78 +1,131 @@
-use client_side_prover_frontend::program::{run, Switchboard, SwitchboardWitness};
+use std::collections::HashMap;
+
+use acvm::acir::{acir_field::GenericFieldElement, circuit::Opcode};
+use client_side_prover_frontend::program::{run, Switchboard, SwitchboardInputs};
+use noirc_abi::{input_parser::InputValue, InputMap};
+use tracing::trace;
 
 use super::*;
+
+fn debug_acir_circuit(circuit: &NoirProgram) {
+  trace!("=== ACIR Circuit Debug ===");
+  trace!("ABI: {:?}", circuit.abi);
+
+  trace!("Private parameters: {:?}", circuit.circuit().private_parameters);
+  trace!("Public parameters: {:?}", circuit.circuit().public_parameters);
+  trace!("Return values: {:?}", circuit.circuit().return_values);
+
+  trace!("ACIR Opcodes:");
+  for (i, op) in circuit.circuit().opcodes.iter().enumerate() {
+    if let Opcode::AssertZero(gate) = op {
+      trace!(
+        "  Gate {}: mul_terms={:?}, linear_combinations={:?}, q_c={:?}",
+        i,
+        gate.mul_terms,
+        gate.linear_combinations,
+        gate.q_c
+      );
+    } else {
+      trace!("  Opcode {}: {:?}", i, op);
+    }
+  }
+  trace!("=== End Debug ===");
+}
 
 #[test]
 #[traced_test]
 fn test_ivc() {
   let circuit = square_zeroth();
-  let witnesses = vec![
-    SwitchboardWitness { witness: vec![F::<G1>::from(0)], pc: 0 },
-    SwitchboardWitness { witness: vec![F::<G1>::from(0)], pc: 0 },
-    SwitchboardWitness { witness: vec![F::<G1>::from(0)], pc: 0 },
+  let switchboard_inputs = vec![
+    SwitchboardInputs {
+      private_inputs: InputMap::from([(
+        "next_pc".to_string(),
+        InputValue::Field(GenericFieldElement::from(0_u64)),
+      )]),
+      pc:             0,
+    },
+    SwitchboardInputs {
+      private_inputs: InputMap::from([(
+        "next_pc".to_string(),
+        InputValue::Field(GenericFieldElement::from(0_u64)),
+      )]),
+      pc:             0,
+    },
+    SwitchboardInputs {
+      private_inputs: InputMap::from([(
+        "next_pc".to_string(),
+        InputValue::Field(GenericFieldElement::from(0_u64)),
+      )]),
+      pc:             0,
+    },
   ];
 
   let memory = Switchboard {
     circuits: vec![circuit],
-    public_input: vec![F::<G1>::from(2), F::<G1>::from(1)],
+    public_input: vec![Scalar::from(2), Scalar::from(1)],
     initial_circuit_index: 0,
-    witnesses,
+    switchboard_inputs,
   };
 
   let snark = run(&memory).unwrap();
-  let zi = snark.zi_primary();
-  dbg!(zi);
-  // First fold:
-  // step_out[0] == 3 * 1 + 2 + 1   == 6
-  // step_out[1] == (3 + 3) * 2 + 1 == 13
-  // Second fold:
-  // step_out[0] == 3 * 6 + 13 + 1 == 32
-  // step_out[1] == (3 + 3) * 13 + 6 == 84
-  //   assert_eq!(zi[0], F::<G1>::from(32));
-  //   assert_eq!(zi[1], F::<G1>::from(84));
-  //   assert_eq!(zi[2], F::<G1>::from(2));
-  //   assert_eq!(zi[3], F::<G1>::from(0));
-  //   assert_eq!(zi[4], F::<G1>::from(0));
+  dbg!(&snark.zi_primary());
+  assert_eq!(snark.zi_primary()[0], Scalar::from(256));
+  assert_eq!(snark.zi_primary()[1], Scalar::from(1));
 }
 
 #[test]
 #[traced_test]
 fn test_ivc_private_inputs() {
   let circuit = add_external();
-  let witnesses = vec![
-    SwitchboardWitness { witness: vec![F::<G1>::from(3), F::<G1>::from(3)], pc: 0 },
-    SwitchboardWitness { witness: vec![F::<G1>::from(5), F::<G1>::from(7)], pc: 0 },
-    SwitchboardWitness { witness: vec![F::<G1>::from(0), F::<G1>::from(2)], pc: 0 },
+  debug_acir_circuit(&circuit);
+  let switchboard_inputs = vec![
+    SwitchboardInputs {
+      private_inputs: InputMap::from([
+        ("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(0_u64))),
+        (
+          "external".to_string(),
+          InputValue::Vec(vec![
+            InputValue::Field(GenericFieldElement::from(3_u64)),
+            InputValue::Field(GenericFieldElement::from(3_u64)),
+          ]),
+        ),
+      ]),
+      pc:             0,
+    },
+    SwitchboardInputs {
+      private_inputs: InputMap::from([
+        ("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(0_u64))),
+        (
+          "external".to_string(),
+          InputValue::Vec(vec![
+            InputValue::Field(GenericFieldElement::from(420_u64)),
+            InputValue::Field(GenericFieldElement::from(69_u64)),
+          ]),
+        ),
+      ]),
+      pc:             0,
+    },
   ];
 
   let memory = Switchboard {
     circuits: vec![circuit],
-    public_input: vec![F::<G1>::from(1), F::<G1>::from(2)],
+    public_input: vec![Scalar::from(1), Scalar::from(2)],
     initial_circuit_index: 0,
-    witnesses,
+    switchboard_inputs,
   };
 
   let snark = run(&memory).unwrap();
   let zi = snark.zi_primary();
   dbg!(zi);
-  // First fold:
-  // step_out[0] == 3 * 1 + 2 + 1   == 6
-  // step_out[1] == (3 + 3) * 2 + 1 == 13
-  // Second fold:
-  // step_out[0] == 3 * 6 + 13 + 1 == 32
-  // step_out[1] == (3 + 3) * 13 + 6 == 84
-  //   assert_eq!(zi[0], F::<G1>::from(32));
-  //   assert_eq!(zi[1], F::<G1>::from(84));
-  //   assert_eq!(zi[2], F::<G1>::from(2));
-  //   assert_eq!(zi[3], F::<G1>::from(0));
-  //   assert_eq!(zi[4], F::<G1>::from(0));
+  assert_eq!(zi[0], Scalar::from(424));
+  assert_eq!(zi[1], Scalar::from(74));
 }
 
 // #[test]
 // #[traced_test]
 // fn test_mock_noir_nivc() {
 //   let mut add_external = NoirProgram::new(ADD_EXTERNAL);
-//   add_external.set_private_inputs(vec![F::<G1>::from(5), F::<G1>::from(7)]);
+//   add_external.set_private_inputs(vec![Scalar::from(5), Scalar::from(7)]);
 //   let add_external =
 //     NoirRomCircuit { circuit: add_external, circuit_index: 0, rom_size: 3 };
 
@@ -91,12 +144,12 @@ fn test_ivc_private_inputs() {
 //     circuits:     vec![add_external, square_zeroth, swap_memory],
 //     rom:          vec![0, 1, 2],
 //     public_input: vec![
-//       F::<G1>::from(1), // Actual input
-//       F::<G1>::from(2), // Actual input
-//       F::<G1>::from(0), // PC
-//       F::<G1>::from(0), // ROM
-//       F::<G1>::from(1), // ROM
-//       F::<G1>::from(2), // ROM
+//       Scalar::from(1), // Actual input
+//       Scalar::from(2), // Actual input
+//       Scalar::from(0), // PC
+//       Scalar::from(0), // ROM
+//       Scalar::from(1), // ROM
+//       Scalar::from(2), // ROM
 //     ],
 //   };
 
@@ -112,10 +165,10 @@ fn test_ivc_private_inputs() {
 //   // Third fold:
 //   // step_out[0] == 9
 //   // step_out[1] == 36
-//   assert_eq!(zi[0], F::<G1>::from(9));
-//   assert_eq!(zi[1], F::<G1>::from(36));
-//   assert_eq!(zi[2], F::<G1>::from(3));
-//   assert_eq!(zi[3], F::<G1>::from(0));
-//   assert_eq!(zi[4], F::<G1>::from(1));
-//   assert_eq!(zi[5], F::<G1>::from(2));
+//   assert_eq!(zi[0], Scalar::from(9));
+//   assert_eq!(zi[1], Scalar::from(36));
+//   assert_eq!(zi[2], Scalar::from(3));
+//   assert_eq!(zi[3], Scalar::from(0));
+//   assert_eq!(zi[4], Scalar::from(1));
+//   assert_eq!(zi[5], Scalar::from(2));
 // }

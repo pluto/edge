@@ -1,7 +1,11 @@
+use std::collections::HashMap;
+
 use client_side_prover::{
   supernova::{NonUniformCircuit, RecursiveSNARK},
   traits::{snark::default_ck_hint, Dual},
 };
+use halo2curves::grumpkin;
+use noirc_abi::InputMap;
 use proof::FoldingProof;
 use tracing::trace;
 
@@ -14,25 +18,25 @@ pub mod data;
 // files should  only be used to adjust the visibility of exported items.
 
 /// Compressed proof type
-pub type CompressedProof = FoldingProof<CompressedSNARK<E1, S1, S2>, F<G1>>;
+pub type CompressedProof = FoldingProof<CompressedSNARK<E1, S1, S2>, Scalar>;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SwitchboardWitness {
-  pub witness: Vec<F<G1>>,
-  pub pc:      usize,
+#[derive(Debug, Clone)]
+pub struct SwitchboardInputs {
+  pub private_inputs: InputMap,
+  pub pc:             usize,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct Switchboard {
   pub circuits:              Vec<NoirProgram>,
-  pub public_input:          Vec<F<G1>>,
+  pub public_input:          Vec<Scalar>,
   pub initial_circuit_index: usize,
-  pub witnesses:             Vec<SwitchboardWitness>,
+  pub switchboard_inputs:    Vec<SwitchboardInputs>,
 }
 
 impl NonUniformCircuit<E1> for Switchboard {
   type C1 = NoirProgram;
-  type C2 = TrivialCircuit<F<G2>>;
+  type C2 = TrivialCircuit<grumpkin::Fr>;
 
   fn num_circuits(&self) -> usize { self.circuits.len() }
 
@@ -77,13 +81,13 @@ pub fn run(switchboard: &Switchboard) -> Result<RecursiveSNARK<E1>, ProofError> 
   let public_params = PublicParams::setup(&memory_clone, &*default_ck_hint(), &*default_ck_hint());
 
   let z0_primary = &switchboard.public_input;
-  let z0_secondary = &[F::<G2>::ZERO];
+  let z0_secondary = &[grumpkin::Fr::ZERO];
 
   let mut recursive_snark_option = None;
 
   let time = std::time::Instant::now();
-  for (idx, switchboard_witness) in switchboard.witnesses.iter().enumerate() {
-    info!("Step {} of {} witnesses", idx, switchboard.witnesses.len());
+  for (idx, switchboard_witness) in switchboard.switchboard_inputs.iter().enumerate() {
+    info!("Step {} of {} witnesses", idx, switchboard.switchboard_inputs.len());
     debug!("Program counter = {:?}", switchboard_witness.pc);
 
     let mut circuit_primary = switchboard.primary_circuit(switchboard_witness.pc);

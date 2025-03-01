@@ -6,8 +6,5 @@ pub fn main(
     external: [Field; 2],
     next_pc: Field,
 ) -> pub FoldingOutput<2> {
-    FoldingOutput {
-        registers: [external[0] + registers[0], external[1] + registers[1]],
-        next_pc: Option::some(next_pc),
-    }
+    FoldingOutput { registers: [external[0] + registers[0], external[1] + registers[1]], next_pc }
 }

@@ -1,6 +1,6 @@
 pub struct FoldingOutput<let N: u32> {
     pub registers: [Field; N],
-    pub next_pc: Option<Field>,
+    pub next_pc: Field,
 }
 
 // TODO: It would be nice to be able to force the `main` function to have a specific signature. In particular, we want:

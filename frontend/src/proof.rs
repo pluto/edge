@@ -54,7 +54,7 @@ impl FoldingProof<Vec<u8>, String> {
 
     Ok(FoldingProof {
       proof,
-      verifier_digest: F::<G1>::from_bytes(
+      verifier_digest: Scalar::from_bytes(
         &hex::decode(&self.verifier_digest).unwrap().try_into().unwrap(),
       )
       .unwrap(),
