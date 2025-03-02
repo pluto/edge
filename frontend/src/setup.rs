@@ -150,7 +150,7 @@ mod tests {
   #[test]
   fn test_setup_and_params() {
     let setup = Setup::new(Switchboard::new(vec![square_zeroth()], vec![], vec![], 0));
-    assert_eq!(setup.params.num_constraints_and_variables(0), (10008, 10001));
+    assert_eq!(setup.params.num_constraints_and_variables(0), (10008, 10000));
   }
 
   #[test]

@@ -138,66 +138,43 @@ impl StepCircuit<Scalar> for NoirProgram {
       }
     };
 
-    // Process gates
+    // Process gates using R1CS approach
     for (idx, opcode) in self.circuit().opcodes.iter().enumerate() {
       if let Opcode::AssertZero(gate) = opcode {
-        // In noir/ACVM, the constraint is (left*right + linear_terms + constant = 0)
-        // We need to build this as a single LinearCombination that must equal zero
-        let mut constraint = LinearCombination::zero();
+        // Convert the gate to R1CS form: A * B - C = 0
+        // First, build the A, B, and C linear combinations
+        let mut a_lc = LinearCombination::zero();
+        let mut b_lc = LinearCombination::zero();
+        let mut c_lc = LinearCombination::zero();
 
-        // For multiplication terms, we should create intermediate variables
+        // Handle mul terms (a product of two variables)
         for mul_term in &gate.mul_terms {
-          // Get variables for the factors
           let left_var = get_var(&mul_term.1, &mut allocated_vars, cs)?;
           let right_var = get_var(&mul_term.2, &mut allocated_vars, cs)?;
 
-          // Create a variable for their product (done implicitly by bellpepper)
-          let product = cs.alloc(
-            || format!("mul_term_product_g{idx}"),
-            || {
-              // Retrieve witness values if available (or default to zero)
-              let left_val = acvm_witness_map
-                .as_ref()
-                .and_then(|map| map.get(&mul_term.1).copied())
-                .unwrap_or_default();
-              let right_val = acvm_witness_map
-                .as_ref()
-                .and_then(|map| map.get(&mul_term.2).copied())
-                .unwrap_or_default();
-              Ok(convert_to_halo2_field(left_val * right_val))
-            },
-          )?;
-
-          // Add a constraint that product = left * right
-          cs.enforce(
-            || format!("mul_constraint_g{idx}"),
-            |lc| lc + left_var,
-            |lc| lc + right_var,
-            |lc| lc + product,
-          );
-
-          // Add this product term to our main constraint
-          constraint = constraint + (convert_to_halo2_field(mul_term.0), product);
+          // Add to A and B linear combinations (negated due to the `AssertZero` gate versus the A*B
+          // = C form)
+          a_lc = a_lc + (-convert_to_halo2_field(mul_term.0), left_var);
+          b_lc = b_lc + (Scalar::one(), right_var);
         }
 
-        // Process addition terms
+        // Handle linear terms (these go into C with negative coefficients)
         for add_term in &gate.linear_combinations {
           let var = get_var(&add_term.1, &mut allocated_vars, cs)?;
-          constraint = constraint + (convert_to_halo2_field(add_term.0), var);
+          c_lc = c_lc + (convert_to_halo2_field(add_term.0), var);
         }
 
-        // Handle constant term
+        // Handle constant term (this goes into C as well)
         if !gate.q_c.is_zero() {
-          constraint = constraint
-            + (convert_to_halo2_field(gate.q_c), Variable::new_unchecked(Index::Input(0)));
+          c_lc = c_lc + (convert_to_halo2_field(gate.q_c), CS::one());
         }
 
-        // Enforce constraint: 1 * 0 = constraint (i.e., constraint must be zero)
+        // Enforce A * B - C = 0
         cs.enforce(
-          || format!("gate_constraint_g{idx}"),
-          |lc| lc + Variable::new_unchecked(Index::Input(0)), // 1
-          |lc| lc,                                            // 0
-          |_| constraint,
+          || format!("constraint_g{idx}"),
+          |_| a_lc.clone(),
+          |_| b_lc.clone(),
+          |_| c_lc.clone(),
         );
       } else {
         panic!("non-AssertZero gate {idx} of type {opcode:?}");
@@ -270,6 +247,7 @@ mod tests {
   use client_side_prover::bellpepper::shape_cs::ShapeCS;
 
   use super::*;
+  use crate::demo::square_zeroth;
 
   fn add_external() -> NoirProgram {
     let json_path = "../target/add_external.json";
@@ -315,8 +293,20 @@ mod tests {
   }
 
   #[test]
-  fn test_constraint_system() {
+  fn test_constraint_system_add_external() {
     let program = add_external();
+
+    let mut cs = ShapeCS::<E1>::new();
+    let pc = Some(AllocatedNum::alloc(&mut cs, || Ok(Scalar::from(0))).unwrap());
+    let z = vec![AllocatedNum::alloc(&mut cs, || Ok(Scalar::from(1))).unwrap()];
+
+    let _ = program.synthesize(&mut cs, pc.as_ref(), z.as_ref()).unwrap();
+    assert_eq!(cs.num_constraints(), 3);
+  }
+
+  #[test]
+  fn test_constraint_system_square_zeroth() {
+    let program = square_zeroth();
 
     let mut cs = ShapeCS::<E1>::new();
     let pc = Some(AllocatedNum::alloc(&mut cs, || Ok(Scalar::from(0))).unwrap());
