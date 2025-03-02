@@ -209,6 +209,7 @@ impl StepCircuit<Scalar> for NoirProgram {
 
       if next_pc_index < return_values.len() {
         let next_pc = Some(return_values[next_pc_index].clone());
+        dbg!(&next_pc);
         let registers = return_values[..registers_length].to_vec();
         return Ok((next_pc, registers));
       }

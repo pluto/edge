@@ -11,12 +11,12 @@ pub fn add_external() -> NoirProgram {
 
 pub fn square_zeroth() -> NoirProgram {
   let bytecode =
-    std::fs::read("..//target/square_zeroth.json").expect("Failed to read Noir program file");
+    std::fs::read("../target/square_zeroth.json").expect("Failed to read Noir program file");
   NoirProgram::new(&bytecode)
 }
 
 pub fn swap_memory() -> NoirProgram {
   let bytecode =
-    std::fs::read("../arget/swap_memory.json").expect("Failed to read Noir program file");
+    std::fs::read("../target/swap_memory.json").expect("Failed to read Noir program file");
   NoirProgram::new(&bytecode)
 }
