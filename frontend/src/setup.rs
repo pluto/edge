@@ -5,6 +5,7 @@ use client_side_prover::{
   supernova::{get_circuit_shapes, snark::CompressedSNARK, PublicParams},
   traits::{snark::default_ck_hint, Dual, Engine},
 };
+use tracing::debug;
 
 use crate::{error::ProofError, noir::NoirProgram, program, AuxParams, ProverKey, E1, S1, S2};
 
@@ -17,6 +18,14 @@ pub struct Setup {
   pub vk_digest_primary:   <E1 as Engine>::Scalar,
   /// Secondary verification key digest
   pub vk_digest_secondary: <Dual<E1> as Engine>::Scalar,
+}
+
+#[cfg(test)]
+impl PartialEq for Setup {
+  fn eq(&self, other: &Self) -> bool {
+    self.vk_digest_primary == other.vk_digest_primary
+      && self.vk_digest_secondary == other.vk_digest_secondary
+  }
 }
 
 impl Setup {
@@ -37,6 +46,18 @@ impl Setup {
     let switchboard = program::Switchboard::new(programs.to_vec(), vec![], vec![], 0);
     // TODO: This can print out the constraints and variables for each circuit
     PublicParams::from_parts(get_circuit_shapes(&switchboard), self.aux_params)
+  }
+
+  pub fn store_file(&self, path: &std::path::PathBuf) -> Result<Vec<u8>, ProofError> {
+    let bytes = self.to_bytes();
+    if let Some(parent) = path.parent() {
+      std::fs::create_dir_all(parent)?;
+    }
+
+    debug!("using path={:?}", path);
+    std::io::Write::write_all(&mut std::fs::File::create(path)?, &bytes)?;
+
+    Ok(bytes)
   }
 }
 
@@ -86,8 +107,27 @@ mod tests {
   use crate::demo::square_zeroth;
 
   #[test]
-  fn test_setup() {
+  fn test_setup_and_params() {
     let setup = Setup::new(&[square_zeroth()]);
-    todo!("Actually do something here. ");
+    let _ = setup.into_public_params(&[square_zeroth()]);
+  }
+
+  #[test]
+  fn test_setup_serialize() {
+    let setup = Setup::new(&[square_zeroth()]);
+    let serialized = setup.to_bytes();
+    let deserialized = Setup::from_bytes(&serialized).unwrap();
+    assert_eq!(setup, deserialized);
+  }
+
+  #[test]
+  fn test_setup_store_file() {
+    let setup = Setup::new(&[square_zeroth()]);
+    let path = tempfile::tempdir().unwrap().into_path();
+    let bytes = setup.store_file(&path.join("setup.bytes")).unwrap();
+    assert!(!bytes.is_empty());
+    let stored_bytes = std::fs::read(path.join("setup.bytes")).unwrap();
+    let deserialized = Setup::from_bytes(&stored_bytes).unwrap();
+    assert_eq!(setup, deserialized);
   }
 }

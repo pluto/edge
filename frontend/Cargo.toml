@@ -37,6 +37,7 @@ tracing-test={workspace=true}
 tempdir     ="0.3.7"
 tokio       ={ version="1.43", features=["full"] }
 client-side-prover-frontend = { path = ".", features = ["demo"] }
+tempfile = "3.17"
 
 [features]
 verify-steps=[]
