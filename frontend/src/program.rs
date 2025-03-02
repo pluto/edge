@@ -8,9 +8,7 @@ use proof::FoldingProof;
 use tracing::trace;
 
 use super::*;
-use crate::noir::NoirProgram;
-
-pub mod data;
+use crate::{noir::NoirProgram, setup::Setup};
 
 // TODO: Consider moving contents of mod.rs files to a separate files. mod.rs
 // files should  only be used to adjust the visibility of exported items.
@@ -57,35 +55,9 @@ impl NonUniformCircuit<E1> for Switchboard {
   fn initial_circuit_index(&self) -> usize { self.initial_circuit_index }
 }
 
-// TODO: This is like a one-time use setup that overlaps some with
-// `ProgramData::into_online()`. Worth checking out how to make this simpler,
-// clearer, more efficient.
-// Setup function
-// pub fn setup(setup_data: &UninitializedSetup) -> PublicParams<E1> {
-//   // Optionally time the setup stage for the program
-//   let time = std::time::Instant::now();
-
-//   // TODO: I don't think we want to have to call `initialize_circuit_list` more
-//   // than once on setup ever and it seems like it may get used more
-//   // frequently.
-//   let initilized_setup = initialize_setup_data(setup_data).unwrap();
-//   let circuits = initialize_circuit_list(&initilized_setup); // TODO, change the type signature
-// of trait to use arbitrary error types.   let memory = Switchboard { circuits };
-//   let public_params = PublicParams::setup(&memory, &*default_ck_hint(), &*default_ck_hint());
-
-//   trace!("`PublicParams::setup()` elapsed: {:?}", time.elapsed());
-
-//   public_params
-// }
-
-pub fn run(switchboard: &Switchboard) -> Result<RecursiveSNARK<E1>, ProofError> {
+pub fn run(setup: Setup, switchboard: &Switchboard) -> Result<RecursiveSNARK<E1>, ProofError> {
   info!("Starting SuperNova program...");
-
-  info!("Setting up PublicParams...");
-  // Create a witness-free clone for setup
-  let mut memory_clone = switchboard.clone();
-  memory_clone.circuits.iter_mut().for_each(|circ| circ.witness = None);
-  let public_params = PublicParams::setup(&memory_clone, &*default_ck_hint(), &*default_ck_hint());
+  let public_params = setup.into_public_params(&switchboard.circuits);
 
   let z0_primary = &switchboard.public_input;
   let z0_secondary = &[grumpkin::Fr::ZERO];

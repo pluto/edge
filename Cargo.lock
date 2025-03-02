@@ -636,6 +636,7 @@ dependencies = [
  "bincode",
  "byteorder",
  "client-side-prover",
+ "client-side-prover-frontend",
  "ff 0.13.0",
  "halo2curves",
  "hex",

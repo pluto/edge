@@ -36,6 +36,9 @@ wasm-bindgen-futures="0.4.37"
 tracing-test={workspace=true}
 tempdir     ="0.3.7"
 tokio       ={ version="1.43", features=["full"] }
+client-side-prover-frontend = { path = ".", features = ["demo"] }
 
 [features]
 verify-steps=[]
+demo = []
+

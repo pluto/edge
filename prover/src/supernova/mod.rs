@@ -760,6 +760,12 @@ where E1: CurveCycleEquipped
   /// Outputs of the primary circuits
   pub fn zi_primary(&self) -> &Vec<E1::Scalar> { &self.zi_primary }
 
+  /// Inputs of the secondary circuits
+  pub fn z0_secondary(&self) -> &Vec<<Dual<E1> as Engine>::Scalar> { &self.z0_secondary }
+
+  /// Outputs of the secondary circuits
+  pub fn zi_secondary(&self) -> &Vec<<Dual<E1> as Engine>::Scalar> { &self.zi_secondary }
+
   /// Current program counter
   pub fn program_counter(&self) -> E1::Scalar { self.program_counter }
 

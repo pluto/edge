@@ -79,3 +79,26 @@ type EE2 = client_side_prover::provider::ipa_pc::EvaluationEngine<E2>;
 type S1 = BatchedRelaxedR1CSSNARK<E1, EE1>;
 /// Represents the SNARK for the second elliptic curve.
 type S2 = BatchedRelaxedR1CSSNARK<E2, EE2>;
+
+#[cfg(any(test, feature = "demo"))]
+pub mod demo {
+  use crate::noir::NoirProgram;
+
+  pub fn add_external() -> NoirProgram {
+    let bytecode =
+      std::fs::read("../target/add_external.json").expect("Failed to read Noir program file");
+    NoirProgram::new(&bytecode)
+  }
+
+  pub fn square_zeroth() -> NoirProgram {
+    let bytecode =
+      std::fs::read("../target/square_zeroth.json").expect("Failed to read Noir program file");
+    NoirProgram::new(&bytecode)
+  }
+
+  pub fn swap_memory() -> NoirProgram {
+    let bytecode =
+      std::fs::read("../target/swap_memory.json").expect("Failed to read Noir program file");
+    NoirProgram::new(&bytecode)
+  }
+}
