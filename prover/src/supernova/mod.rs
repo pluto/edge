@@ -760,6 +760,9 @@ where E1: CurveCycleEquipped
   /// Outputs of the primary circuits
   pub fn zi_primary(&self) -> &Vec<E1::Scalar> { &self.zi_primary }
 
+  /// Current program counter
+  pub fn program_counter(&self) -> E1::Scalar { self.program_counter }
+
   /// executing a step of the incremental computation
   #[allow(clippy::too_many_arguments)]
   #[tracing::instrument(skip_all, name = "supernova::RecursiveSNARK::prove_step")]
