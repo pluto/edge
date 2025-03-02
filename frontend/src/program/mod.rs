@@ -21,10 +21,23 @@ pub type CompressedProof = FoldingProof<CompressedSNARK<E1, S1, S2>, Scalar>;
 // TODO: Use a mapping of program counter to circuit index
 #[derive(Debug, Clone)]
 pub struct Switchboard {
-  pub circuits:              Vec<NoirProgram>,
-  pub public_input:          Vec<Scalar>,
-  pub initial_circuit_index: usize,
-  pub switchboard_inputs:    Vec<InputMap>,
+  pub(crate) circuits:              Vec<NoirProgram>,
+  pub(crate) public_input:          Vec<Scalar>,
+  pub(crate) initial_circuit_index: usize,
+  pub(crate) switchboard_inputs:    Vec<InputMap>,
+}
+
+impl Switchboard {
+  pub fn new(
+    mut circuits: Vec<NoirProgram>,
+    switchboard_inputs: Vec<InputMap>,
+    public_input: Vec<Scalar>,
+    initial_circuit_index: usize,
+  ) -> Self {
+    // Set the index of each circuit given the order they are passed in
+    circuits.iter_mut().enumerate().for_each(|(i, c)| c.index = i);
+    Self { circuits, public_input, initial_circuit_index, switchboard_inputs }
+  }
 }
 
 impl NonUniformCircuit<E1> for Switchboard {
@@ -81,7 +94,7 @@ pub fn run(switchboard: &Switchboard) -> Result<RecursiveSNARK<E1>, ProofError> 
   let mut recursive_snark: Option<RecursiveSNARK<E1>> = None;
 
   for (idx, switchboard_witness) in switchboard.switchboard_inputs.iter().enumerate() {
-    info!("Step {} of {} witnesses", idx, switchboard.switchboard_inputs.len());
+    info!("Step {} of {} witnesses", idx + 1, switchboard.switchboard_inputs.len());
 
     // Determine program counter based on current state
     let program_counter = match &recursive_snark {

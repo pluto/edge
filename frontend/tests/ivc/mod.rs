@@ -13,12 +13,12 @@ fn test_ivc() {
     InputMap::from([("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(0_u64)))]),
   ];
 
-  let memory = Switchboard {
-    circuits: vec![square_zeroth()],
-    public_input: vec![Scalar::from(2), Scalar::from(1)],
-    initial_circuit_index: 0,
+  let memory = Switchboard::new(
+    vec![square_zeroth()],
     switchboard_inputs,
-  };
+    vec![Scalar::from(2), Scalar::from(1)],
+    0,
+  );
 
   let snark = run(&memory).unwrap();
   dbg!(&snark.zi_primary());
@@ -52,12 +52,12 @@ fn test_ivc_private_inputs() {
     ]),
   ];
 
-  let memory = Switchboard {
-    circuits: vec![add_external()],
-    public_input: vec![Scalar::from(1), Scalar::from(2)],
-    initial_circuit_index: 0,
+  let memory = Switchboard::new(
+    vec![add_external()],
     switchboard_inputs,
-  };
+    vec![Scalar::from(1), Scalar::from(2)],
+    0,
+  );
 
   let snark = run(&memory).unwrap();
   let zi = snark.zi_primary();
@@ -75,8 +75,8 @@ fn test_mock_noir_nivc() {
       (
         "external".to_string(),
         InputValue::Vec(vec![
-          InputValue::Field(GenericFieldElement::from(3_u64)),
-          InputValue::Field(GenericFieldElement::from(3_u64)),
+          InputValue::Field(GenericFieldElement::from(5_u64)),
+          InputValue::Field(GenericFieldElement::from(7_u64)),
         ]),
       ),
     ]),
@@ -87,12 +87,12 @@ fn test_mock_noir_nivc() {
     )]),
   ];
 
-  let memory = Switchboard {
-    circuits: vec![add_external(), square_zeroth(), swap_memory()],
-    public_input: vec![Scalar::from(1), Scalar::from(2)],
-    initial_circuit_index: 0,
+  let memory = Switchboard::new(
+    vec![add_external(), square_zeroth(), swap_memory()],
     switchboard_inputs,
-  };
+    vec![Scalar::from(1), Scalar::from(2)],
+    0,
+  );
 
   let snark = run(&memory).unwrap();
   let zi = snark.zi_primary();
