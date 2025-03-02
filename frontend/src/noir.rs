@@ -267,7 +267,16 @@ fn convert_to_acir_field(f: Scalar) -> GenericFieldElement<Fr> {
 
 #[cfg(test)]
 mod tests {
+  use client_side_prover::bellpepper::shape_cs::ShapeCS;
+
   use super::*;
+
+  fn add_external() -> NoirProgram {
+    let json_path = "../target/add_external.json";
+    let json_data = std::fs::read(json_path).expect("Failed to read add_external.json");
+
+    serde_json::from_slice(&json_data).expect("Failed to deserialize add_external.json")
+  }
 
   #[test]
   fn test_conversions() {
@@ -282,30 +291,38 @@ mod tests {
 
   #[test]
   fn test_deserialize_abi() {
-    let json_path = "../examples/add_external/target/add_external.json";
-    let json_data = std::fs::read(json_path).expect("Failed to read add_external.json");
-
-    let program: NoirProgram =
-      serde_json::from_slice(&json_data).expect("Failed to deserialize add_external.json");
+    let program = add_external();
 
     // Verify basic structure
     assert_eq!(program.version, "1.0.0-beta.2+1a2a08cbcb68646ff1aaef383cfc1798933c1355");
-    assert_eq!(program.hash, 2789485860577127199);
+    assert_eq!(program.hash, 4842196402509912449);
 
     // Verify parameters
     assert_eq!(program.abi.parameters.len(), 3);
-    assert_eq!(program.abi.parameters[0].name, "external");
-    assert_eq!(program.abi.parameters[1].name, "registers");
+    assert_eq!(program.abi.parameters[0].name, "registers");
+    assert_eq!(program.abi.parameters[1].name, "external");
     assert_eq!(program.abi.parameters[2].name, "next_pc");
 
     // Verify return type
     if let AbiType::Struct { fields, path } = &program.abi.return_type.as_ref().unwrap().abi_type {
       assert_eq!(fields.len(), 2);
-      assert_eq!(path, "FoldingIO");
+      assert_eq!(path, "nivc::FoldingOutput");
       assert_eq!(fields[0].0, "registers");
       assert_eq!(fields[1].0, "next_pc");
     } else {
       panic!("Expected tuple return type, got {:?}", program.abi.return_type);
     }
+  }
+
+  #[test]
+  fn test_constraint_system() {
+    let program = add_external();
+
+    let mut cs = ShapeCS::<E1>::new();
+    let pc = Some(AllocatedNum::alloc(&mut cs, || Ok(Scalar::from(0))).unwrap());
+    let z = vec![AllocatedNum::alloc(&mut cs, || Ok(Scalar::from(1))).unwrap()];
+
+    let _ = program.synthesize(&mut cs, pc.as_ref(), z.as_ref()).unwrap();
+    assert_eq!(cs.num_constraints(), 3);
   }
 }
