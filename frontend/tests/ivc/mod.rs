@@ -1,7 +1,7 @@
 use acvm::acir::acir_field::GenericFieldElement;
-use client_side_prover::provider::GrumpkinEngine;
+use client_side_prover::{provider::GrumpkinEngine, supernova::snark::CompressedSNARK};
 use client_side_prover_frontend::{
-  program::{run, Switchboard},
+  program::{compress, run, Switchboard},
   setup::Setup,
   Scalar,
 };
@@ -132,4 +132,30 @@ fn test_ivc_verify() {
   assert_eq!(&z1_secondary, snark.zi_secondary());
   assert_eq!(z1_primary, vec![Scalar::from(4), Scalar::from(1)]);
   assert_eq!(z1_secondary, vec![grumpkin::Fr::ZERO]);
+}
+
+// TODO: Lots of clones here now.
+#[test]
+#[traced_test]
+fn test_ivc_compression() {
+  let programs = vec![square_zeroth()];
+  let setup = Setup::new(&programs);
+  let pp = setup.clone().into_public_params(&programs);
+  let switchboard_inputs = vec![InputMap::from([(
+    "next_pc".to_string(),
+    InputValue::Field(GenericFieldElement::from(0_u64)),
+  )])];
+
+  let memory = Switchboard::new(
+    programs.clone(),
+    switchboard_inputs,
+    vec![Scalar::from(2), Scalar::from(1)],
+    0,
+  );
+
+  let snark = run(setup.clone(), &memory).unwrap();
+  let compressed_proof = compress(setup, &snark, &programs).unwrap();
+
+  let (_, vk) = CompressedSNARK::setup(&pp).unwrap();
+  compressed_proof.proof.verify(&pp, &vk, &snark.z0_primary(), &snark.z0_secondary()).unwrap();
 }

@@ -7,7 +7,7 @@ use client_side_prover::{
 };
 use tracing::debug;
 
-use crate::{error::ProofError, noir::NoirProgram, program, AuxParams, ProverKey, E1, S1, S2};
+use crate::{error::ProofError, noir::NoirProgram, program, AuxParams, E1, S1, S2};
 
 // TODO: This could probably just store the programs with it
 #[derive(Clone, Debug)]

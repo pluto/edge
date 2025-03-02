@@ -1,6 +1,6 @@
 use client_side_prover::{
   supernova::{NonUniformCircuit, RecursiveSNARK},
-  traits::snark::default_ck_hint,
+  traits::snark::{default_ck_hint, BatchedRelaxedR1CSSNARKTrait},
 };
 use halo2curves::grumpkin;
 use noirc_abi::InputMap;
@@ -132,169 +132,39 @@ pub fn run(setup: Setup, switchboard: &Switchboard) -> Result<RecursiveSNARK<E1>
   Ok(recursive_snark.unwrap())
 }
 
-// /// Compresses a proof without performing the setup step.
-// ///
-// /// This function takes an existing `RecursiveSNARK` and compresses it into a
-// /// `CompressedProof` using pre-initialized proving keys. This is useful when
-// /// the setup step has already been performed and the proving keys are
-// /// available, allowing for more efficient proof generation.
-// ///
-// /// # Arguments
-// ///
-// /// * `recursive_snark` - A reference to the `RecursiveSNARK` that needs to be compressed.
-// /// * `public_params` - The public parameters required for the proof system.
-// /// * `vk_digest_primary` - The primary verification key digest.
-// /// * `vk_digest_secondary` - The secondary verification key digest.
-// ///
-// /// # Returns
-// ///
-// /// A `Result` containing the `CompressedProof` if successful, or a `ProofError`
-// /// if an error occurs.
-// ///
-// /// # Errors
-// ///
-// /// This function will return a `ProofError` if the compression process fails at
-// /// any step.
-// pub fn compress_proof_no_setup(
-//   recursive_snark: &RecursiveSNARK<E1>,
-//   public_params: &PublicParams<E1>,
-//   vk_digest_primary: <E1 as Engine>::Scalar,
-//   vk_digest_secondary: <Dual<E1> as Engine>::Scalar,
-// ) -> Result<CompressedProof, ProofError> {
-//   let pk = CompressedSNARK::<E1, S1, S2>::initialize_pk(
-//     public_params,
-//     vk_digest_primary,
-//     vk_digest_secondary,
-//   )
-//   .unwrap();
-//   debug!(
-//     "initialized pk pk_primary.digest={:?}, pk_secondary.digest={:?}",
-//     pk.pk_primary.vk_digest, pk.pk_secondary.vk_digest
-//   );
+// TODO: We need to make this not take in the programs
+pub fn compress(
+  setup: Setup,
+  recursive_snark: &RecursiveSNARK<E1>,
+  programs: &[NoirProgram],
+) -> Result<CompressedProof, ProofError> {
+  let pk = ProverKey {
+    pk_primary:   S1::initialize_pk(setup.aux_params.ck_primary.clone(), setup.vk_digest_primary)?,
+    pk_secondary: S2::initialize_pk(
+      setup.aux_params.ck_secondary.clone(),
+      setup.vk_digest_secondary,
+    )?,
+  };
+  // let pk:  = CompressedSNARK::<E1, S1, S2>::initialize_pk(
+  //   public_params,
+  //   vk_digest_primary,
+  //   vk_digest_secondary,
+  // )
+  // .unwrap();
+  debug!(
+    "initialized pk pk_primary.digest={:?}, pk_secondary.digest={:?}",
+    pk.pk_primary.vk_digest, pk.pk_secondary.vk_digest
+  );
+  let public_params = setup.into_public_params(programs);
 
-//   debug!("`CompressedSNARK::prove STARTING PROVING!");
-//   let proof = FoldingProof {
-//     proof:           CompressedSNARK::<E1, S1, S2>::prove(public_params, &pk, recursive_snark)?,
-//     verifier_digest: pk.pk_primary.vk_digest,
-//   };
-//   debug!("`CompressedSNARK::prove completed!");
+  debug!("`CompressedSNARK::prove STARTING PROVING!");
+  let proof = FoldingProof {
+    proof:           CompressedSNARK::<E1, S1, S2>::prove(&public_params, &pk, recursive_snark)?,
+    verifier_digest: pk.pk_primary.vk_digest,
+  };
+  debug!("`CompressedSNARK::prove completed!");
 
-//   Ok(proof)
-// }
+  Ok(proof)
+}
 
-// /// Compresses a proof by performing the setup step and generating a compressed
-// /// proof.
-// ///
-// /// This function initializes the proving keys by performing the setup step, and
-// /// then uses these keys to generate a compressed proof from an existing
-// /// `RecursiveSNARK`. This is useful when the setup step has not been performed
-// /// yet, and the proving keys need to be initialized before generating the
-// /// proof.
-// ///
-// /// # Arguments
-// ///
-// /// * `recursive_snark` - A reference to the `RecursiveSNARK` that needs to be compressed.
-// /// * `public_params` - The public parameters required for the proof system.
-// ///
-// /// # Returns
-// ///
-// /// A `Result` containing the `CompressedProof` if successful, or a `ProofError`
-// /// if an error occurs.
-// ///
-// /// # Errors
-// ///
-// /// This function will return a `ProofError` if the setup or compression process
-// /// fails at any step.
-// pub fn compress_proof(
-//   recursive_snark: &RecursiveSNARK<E1>,
-//   public_params: &PublicParams<E1>,
-// ) -> Result<CompressedProof, ProofError> {
-//   debug!("Setting up `CompressedSNARK`");
-//   let time = std::time::Instant::now();
-//   let (pk, _vk) = CompressedSNARK::<E1, S1, S2>::setup(public_params)?;
-//   debug!("Done setting up `CompressedSNARK`");
-//   trace!("`CompressedSNARK::setup` elapsed: {:?}", time.elapsed());
 
-//   let time = std::time::Instant::now();
-
-//   let proof = FoldingProof {
-//     proof:           CompressedSNARK::<E1, S1, S2>::prove(public_params, &pk, recursive_snark)?,
-//     verifier_digest: pk.pk_primary.vk_digest,
-//   };
-//   debug!("`CompressedSNARK::prove completed!");
-
-//   trace!("`CompressedSNARK::prove` elapsed: {:?}", time.elapsed());
-
-//   Ok(proof)
-// }
-
-// /// Initializes the setup data for the program.
-// ///
-// /// This function takes an `UninitializedSetup` and converts it into an
-// /// `InitializedSetup` by iterating over the R1CS types and witness generator
-// /// types, creating `R1CS` instances and collecting them into vectors. It then
-// /// returns an `InitializedSetup` containing the R1CS and witness generator
-// /// types, along with the maximum ROM length.
-// ///
-// /// # Arguments
-// ///
-// /// * `setup_data` - The `UninitializedSetup` to initialize.
-// ///
-// /// # Returns
-// ///
-// /// A `Result` containing the `InitializedSetup` if successful, or a
-// /// `ProofError` if an error occurs.
-// pub fn initialize_setup_data(
-//   setup_data: &UninitializedSetup,
-// ) -> Result<InitializedSetup, ProofError> {
-//   let (r1cs, witness_generator_types) = setup_data
-//     .r1cs_types
-//     .iter()
-//     .zip(setup_data.witness_generator_types.iter())
-//     .map(|(r1cs_type, generator)| {
-//       let r1cs = R1CS::try_from(r1cs_type)?;
-//       Ok::<(Arc<circom::r1cs::R1CS>, data::WitnessGeneratorType), ProofError>((
-//         Arc::new(r1cs),
-//         generator.clone(),
-//       ))
-//     })
-//     .collect::<Result<Vec<_>, _>>()?
-//     .into_iter()
-//     .unzip();
-
-//   Ok(InitializedSetup { r1cs, witness_generator_types, max_rom_length: setup_data.max_rom_length
-// }) }
-
-// /// Initializes a list of ROM circuits from the provided setup data.
-// ///
-// /// This function takes an `InitializedSetup` and creates a vector of
-// /// `RomCircuit` instances. Each `RomCircuit` is constructed using the R1CS and
-// /// witness generator types from the setup data, and is assigned a unique
-// /// circuit index and the maximum ROM length.
-// ///
-// /// # Arguments
-// ///
-// /// * `setup_data` - The `InitializedSetup` containing the R1CS and witness generator types.
-// ///
-// /// # Returns
-// ///
-// /// A vector of `RomCircuit` instances initialized with the provided setup data.
-// pub fn initialize_circuit_list(setup_data: &InitializedSetup) -> Vec<RomCircuit> {
-//   setup_data
-//     .r1cs
-//     .iter()
-//     .zip(setup_data.witness_generator_types.iter())
-//     .enumerate()
-//     .map(|(i, (r1cs, generator))| {
-//       let circuit = circom::CircomCircuit { r1cs: r1cs.clone(), witness: None };
-//       RomCircuit {
-//         circuit,
-//         circuit_index: i,
-//         rom_size: setup_data.max_rom_length,
-//         nivc_io: None,
-//         private_input: None,
-//         witness_generator_type: generator.clone(),
-//       }
-//     })
-//     .collect::<Vec<_>>()
-// }

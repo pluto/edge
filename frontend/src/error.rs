@@ -54,6 +54,10 @@ pub enum ProofError {
   #[error(transparent)]
   Bincode(#[from] Box<bincode::ErrorKind>),
 
+  /// The error is a client_side_prover::errors::NovaError
+  #[error(transparent)]
+  Nova(#[from] client_side_prover::errors::NovaError),
+
   /// The error is a client_side_prover::supernova::error::SuperNovaError
   #[error(transparent)]
   SuperNova(#[from] client_side_prover::supernova::error::SuperNovaError),
