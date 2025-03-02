@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-
 use client_side_prover::{
   supernova::{NonUniformCircuit, RecursiveSNARK},
-  traits::{snark::default_ck_hint, Dual},
+  traits::snark::default_ck_hint,
 };
 use halo2curves::grumpkin;
 use noirc_abi::InputMap;
@@ -26,6 +24,7 @@ pub struct SwitchboardInputs {
   pub pc:             usize,
 }
 
+// TODO: Use a mapping of program counter to circuit index
 #[derive(Debug, Clone)]
 pub struct Switchboard {
   pub circuits:              Vec<NoirProgram>,
@@ -74,8 +73,7 @@ pub fn run(switchboard: &Switchboard) -> Result<RecursiveSNARK<E1>, ProofError> 
   info!("Starting SuperNova program...");
 
   info!("Setting up PublicParams...");
-  // TODO: This is stupid to do, but I need to get around the original setting of the witness.
-  // Having separate setup is the way (we already know this)
+  // Create a witness-free clone for setup
   let mut memory_clone = switchboard.clone();
   memory_clone.circuits.iter_mut().for_each(|circ| circ.witness = None);
   let public_params = PublicParams::setup(&memory_clone, &*default_ck_hint(), &*default_ck_hint());
@@ -83,44 +81,74 @@ pub fn run(switchboard: &Switchboard) -> Result<RecursiveSNARK<E1>, ProofError> 
   let z0_primary = &switchboard.public_input;
   let z0_secondary = &[grumpkin::Fr::ZERO];
 
-  let mut recursive_snark_option = None;
-
   let time = std::time::Instant::now();
+
+  // Initialize recursive SNARK as None
+  let mut recursive_snark: Option<RecursiveSNARK<E1>> = None;
+
   for (idx, switchboard_witness) in switchboard.switchboard_inputs.iter().enumerate() {
     info!("Step {} of {} witnesses", idx, switchboard.switchboard_inputs.len());
-    debug!("Program counter = {:?}", switchboard_witness.pc);
 
-    let mut circuit_primary = switchboard.primary_circuit(switchboard_witness.pc);
+    // Determine program counter based on current state
+    let program_counter = match &recursive_snark {
+      None => switchboard.initial_circuit_index(),
+      Some(snark) => {
+        // TODO: I honestly am surprised that the prover chose to use a usize instead of a field
+        // element for the PC, it would be cleaner to do otherwise
+        let pc_bytes = snark.program_counter().to_bytes();
+
+        // Check if higher bytes are non-zero (which would be truncated in usize conversion)
+        let usize_size = std::mem::size_of::<usize>();
+        if pc_bytes[usize_size..].iter().any(|&b| b != 0) {
+          return Err(ProofError::Other("Program counter value too large for usize".into()));
+        }
+
+        // Convert the relevant bytes to usize (using little-endian order)
+        let mut pc_value = 0usize;
+        for (i, &b) in pc_bytes.iter().take(usize_size).enumerate() {
+          pc_value |= (b as usize) << (i * 8);
+        }
+
+        pc_value
+      },
+    };
+
+    debug!("Program counter = {:?}", program_counter);
+
+    // Prepare circuits for this step
+    let mut circuit_primary = switchboard.primary_circuit(program_counter);
     circuit_primary.witness = Some(switchboard_witness.clone());
     let circuit_secondary = switchboard.secondary_circuit();
 
-    let mut recursive_snark = recursive_snark_option.unwrap_or_else(|| {
-      RecursiveSNARK::new(
+    // Initialize or update the recursive SNARK
+    if recursive_snark.is_none() {
+      // Initialize a new recursive SNARK for the first step
+      recursive_snark = Some(RecursiveSNARK::new(
         &public_params,
         switchboard,
         &circuit_primary,
         &circuit_secondary,
         z0_primary,
         z0_secondary,
-      )
-    })?;
+      )?);
+    }
 
+    // Prove the next step
     info!("Proving single step...");
-    recursive_snark.prove_step(&public_params, &circuit_primary, &circuit_secondary)?;
+    let snark = recursive_snark.as_mut().unwrap();
+    snark.prove_step(&public_params, &circuit_primary, &circuit_secondary)?;
     info!("Done proving single step...");
 
     // TODO: For some reason this is failing
     // info!("Verifying single step...");
-    // recursive_snark.verify(&public_params, recursive_snark.z0_primary(), z0_secondary)?;
+    // snark.verify(&public_params, snark.z0_primary(), z0_secondary)?;
     // info!("Single step verification done");
-
-    recursive_snark_option = Some(Ok(recursive_snark));
   }
-  // Note, this unwrap cannot fail
-  let recursive_snark = recursive_snark_option.unwrap();
+
   trace!("Recursive loop of `program::run()` elapsed: {:?}", time.elapsed());
 
-  Ok(recursive_snark?)
+  // Return the completed recursive SNARK
+  Ok(recursive_snark.unwrap())
 }
 
 // /// Compresses a proof without performing the setup step.

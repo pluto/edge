@@ -16,7 +16,7 @@ use bellpepper_core::{
 };
 use client_side_prover::supernova::StepCircuit;
 use ff::PrimeField;
-use noirc_abi::{input_parser::InputValue, Abi, AbiParameter, AbiType, AbiVisibility};
+use noirc_abi::{input_parser::InputValue, Abi, AbiType};
 use tracing::trace;
 
 use super::*;
@@ -66,6 +66,7 @@ impl StepCircuit<Scalar> for NoirProgram {
 
   fn circuit_index(&self) -> usize { self.index }
 
+  #[allow(clippy::too_many_lines)]
   fn synthesize<CS: ConstraintSystem<Scalar>>(
     &self,
     cs: &mut CS,
@@ -76,7 +77,7 @@ impl StepCircuit<Scalar> for NoirProgram {
 
     // Create variable tracker and initialize ACVM
     let mut allocated_vars: HashMap<Witness, AllocatedNum<Scalar>> = HashMap::new();
-    let acvm_witness_map = if let Some(inputs) = &self.witness {
+    let acvm_witness_map = self.witness.as_ref().map(|inputs| {
       let mut acvm = ACVM::new(
         &StubbedBlackBoxSolver(false),
         &self.circuit().opcodes,
@@ -86,6 +87,7 @@ impl StepCircuit<Scalar> for NoirProgram {
       );
 
       // Prepare inputs with registers
+      // TODO: Can we reove this clone?
       let mut inputs_with_registers = inputs.private_inputs.clone();
       inputs_with_registers.insert(
         "registers".to_string(),
@@ -106,10 +108,8 @@ impl StepCircuit<Scalar> for NoirProgram {
       // Solve and get resulting witness map
       trace!("Executing ACVM solve...");
       acvm.solve();
-      Some(acvm.finalize())
-    } else {
-      None
-    };
+      acvm.finalize()
+    });
 
     // Allocate variables from public inputs (z)
     for (i, witness) in self.circuit().public_parameters.0.iter().enumerate() {
@@ -121,8 +121,7 @@ impl StepCircuit<Scalar> for NoirProgram {
     // Helper for getting/creating variables
     let get_var = |witness: &Witness,
                    vars: &mut HashMap<Witness, AllocatedNum<Scalar>>,
-                   cs: &mut CS,
-                   idx: usize| {
+                   cs: &mut CS| {
       if let Some(var) = vars.get(witness) {
         Ok::<_, SynthesisError>(var.get_variable())
       } else {
@@ -149,15 +148,15 @@ impl StepCircuit<Scalar> for NoirProgram {
 
         // Process multiplication terms
         for mul_term in &gate.mul_terms {
-          let left_var = get_var(&mul_term.1, &mut allocated_vars, cs, idx)?;
-          let right_var = get_var(&mul_term.2, &mut allocated_vars, cs, idx)?;
+          let left_var = get_var(&mul_term.1, &mut allocated_vars, cs)?;
+          let right_var = get_var(&mul_term.2, &mut allocated_vars, cs)?;
           left_terms = left_terms + (convert_to_halo2_field(mul_term.0), left_var);
           right_terms = right_terms + (Scalar::one(), right_var);
         }
 
         // Process addition terms
         for add_term in &gate.linear_combinations {
-          let var = get_var(&add_term.1, &mut allocated_vars, cs, idx)?;
+          let var = get_var(&add_term.1, &mut allocated_vars, cs)?;
           final_terms = final_terms + (convert_to_halo2_field(add_term.0), var);
         }
 
@@ -168,9 +167,9 @@ impl StepCircuit<Scalar> for NoirProgram {
         }
 
         // Enforce constraint
-        cs.enforce(|| format!("g{}", idx), |_| left_terms, |_| right_terms, |_| final_terms);
+        cs.enforce(|| format!("g{idx}"), |_| left_terms, |_| right_terms, |_| final_terms);
       } else {
-        panic!("non-AssertZero gate {} of type {:?}", idx, opcode);
+        panic!("non-AssertZero gate {idx} of type {opcode:?}");
       }
     }
 
@@ -197,6 +196,7 @@ impl StepCircuit<Scalar> for NoirProgram {
     if let Some(noirc_abi::AbiReturnType { abi_type: AbiType::Struct { fields, .. }, .. }) =
       &self.abi.return_type
     {
+      // TODO: This should be an error.
       let registers_length = fields
         .iter()
         .find(|(name, _)| name == "registers")
