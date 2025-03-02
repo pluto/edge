@@ -1,5 +1,5 @@
 use acvm::acir::acir_field::GenericFieldElement;
-use client_side_prover::{provider::GrumpkinEngine, supernova::snark::CompressedSNARK};
+use client_side_prover::supernova::snark::CompressedSNARK;
 use client_side_prover_frontend::{
   program::{compress, run, Switchboard},
   setup::Setup,
@@ -15,17 +15,15 @@ use super::*;
 #[traced_test]
 fn test_ivc() {
   let programs = vec![square_zeroth()];
-  let setup = Setup::new(&programs);
   let switchboard_inputs = vec![
     InputMap::from([("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(0_u64)))]),
     InputMap::from([("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(0_u64)))]),
     InputMap::from([("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(0_u64)))]),
   ];
-
-  let memory =
+  let switchboard =
     Switchboard::new(programs, switchboard_inputs, vec![Scalar::from(2), Scalar::from(1)], 0);
-
-  let snark = run(setup, &memory).unwrap();
+  let setup = Setup::new(switchboard);
+  let snark = run(&setup).unwrap();
   dbg!(&snark.zi_primary());
   assert_eq!(snark.zi_primary()[0], Scalar::from(256));
   assert_eq!(snark.zi_primary()[1], Scalar::from(1));
@@ -35,7 +33,6 @@ fn test_ivc() {
 #[traced_test]
 fn test_ivc_private_inputs() {
   let programs = vec![add_external()];
-  let setup = Setup::new(&programs);
   let switchboard_inputs = vec![
     InputMap::from([
       ("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(0_u64))),
@@ -58,11 +55,10 @@ fn test_ivc_private_inputs() {
       ),
     ]),
   ];
-
-  let memory =
+  let switchboard =
     Switchboard::new(programs, switchboard_inputs, vec![Scalar::from(1), Scalar::from(2)], 0);
-
-  let snark = run(setup, &memory).unwrap();
+  let setup = Setup::new(switchboard);
+  let snark = run(&setup).unwrap();
   let zi = snark.zi_primary();
   dbg!(zi);
   assert_eq!(zi[0], Scalar::from(424));
@@ -73,7 +69,6 @@ fn test_ivc_private_inputs() {
 #[traced_test]
 fn test_mock_noir_nivc() {
   let programs = vec![add_external(), square_zeroth(), swap_memory()];
-  let setup = Setup::new(&programs);
   let switchboard_inputs = vec![
     InputMap::from([
       ("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(1_u64))),
@@ -91,11 +86,10 @@ fn test_mock_noir_nivc() {
       InputValue::Field(GenericFieldElement::from(-1_i128)),
     )]),
   ];
-
-  let memory =
+  let switchboard =
     Switchboard::new(programs, switchboard_inputs, vec![Scalar::from(1), Scalar::from(2)], 0);
-
-  let snark = run(setup, &memory).unwrap();
+  let setup = Setup::new(switchboard);
+  let snark = run(&setup).unwrap();
   let zi = snark.zi_primary();
   dbg!(zi);
   // First fold:
@@ -115,19 +109,16 @@ fn test_mock_noir_nivc() {
 #[traced_test]
 fn test_ivc_verify() {
   let programs = vec![square_zeroth()];
-  let setup = Setup::new(&programs);
-  let pp = setup.clone().into_public_params(&programs);
   let switchboard_inputs = vec![InputMap::from([(
     "next_pc".to_string(),
     InputValue::Field(GenericFieldElement::from(0_u64)),
   )])];
-
-  let memory =
+  let switchboard =
     Switchboard::new(programs, switchboard_inputs, vec![Scalar::from(2), Scalar::from(1)], 0);
-
-  let snark = run(setup, &memory).unwrap();
+  let setup = Setup::new(switchboard);
+  let snark = run(&setup).unwrap();
   let (z1_primary, z1_secondary) =
-    snark.verify(&pp, &snark.z0_primary(), &snark.z0_secondary()).unwrap();
+    snark.verify(&setup.params, &snark.z0_primary(), &snark.z0_secondary()).unwrap();
   assert_eq!(&z1_primary, snark.zi_primary());
   assert_eq!(&z1_secondary, snark.zi_secondary());
   assert_eq!(z1_primary, vec![Scalar::from(4), Scalar::from(1)]);
@@ -139,23 +130,25 @@ fn test_ivc_verify() {
 #[traced_test]
 fn test_ivc_compression() {
   let programs = vec![square_zeroth()];
-  let setup = Setup::new(&programs);
-  let pp = setup.clone().into_public_params(&programs);
   let switchboard_inputs = vec![InputMap::from([(
     "next_pc".to_string(),
     InputValue::Field(GenericFieldElement::from(0_u64)),
   )])];
-
-  let memory = Switchboard::new(
+  let switchboard = Switchboard::new(
     programs.clone(),
     switchboard_inputs,
     vec![Scalar::from(2), Scalar::from(1)],
     0,
   );
+  let setup = Setup::new(switchboard);
+  let snark = run(&setup).unwrap();
+  let compressed_proof = compress(&setup, &snark).unwrap();
 
-  let snark = run(setup.clone(), &memory).unwrap();
-  let compressed_proof = compress(setup, &snark, &programs).unwrap();
-
-  let (_, vk) = CompressedSNARK::setup(&pp).unwrap();
-  compressed_proof.proof.verify(&pp, &vk, &snark.z0_primary(), &snark.z0_secondary()).unwrap();
+  let (_, vk) = CompressedSNARK::setup(&setup.params).unwrap();
+  compressed_proof
+    .proof
+    .verify(&setup.params, &vk, &snark.z0_primary(), &snark.z0_secondary())
+    .unwrap();
 }
+
+// TODO: Add some fail cases for circuits.

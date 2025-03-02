@@ -8,7 +8,10 @@ use proof::FoldingProof;
 use tracing::trace;
 
 use super::*;
-use crate::{noir::NoirProgram, setup::Setup};
+use crate::{
+  noir::NoirProgram,
+  setup::{Ready, Setup},
+};
 
 // TODO: Consider moving contents of mod.rs files to a separate files. mod.rs
 // files should  only be used to adjust the visibility of exported items.
@@ -55,11 +58,10 @@ impl NonUniformCircuit<E1> for Switchboard {
   fn initial_circuit_index(&self) -> usize { self.initial_circuit_index }
 }
 
-pub fn run(setup: Setup, switchboard: &Switchboard) -> Result<RecursiveSNARK<E1>, ProofError> {
+pub fn run(setup: &Setup<Ready>) -> Result<RecursiveSNARK<E1>, ProofError> {
   info!("Starting SuperNova program...");
-  let public_params = setup.into_public_params(&switchboard.circuits);
 
-  let z0_primary = &switchboard.public_input;
+  let z0_primary = &setup.switchboard.public_input;
   let z0_secondary = &[grumpkin::Fr::ZERO];
 
   let time = std::time::Instant::now();
@@ -67,12 +69,12 @@ pub fn run(setup: Setup, switchboard: &Switchboard) -> Result<RecursiveSNARK<E1>
   // Initialize recursive SNARK as None
   let mut recursive_snark: Option<RecursiveSNARK<E1>> = None;
 
-  for (idx, switchboard_witness) in switchboard.switchboard_inputs.iter().enumerate() {
-    info!("Step {} of {} witnesses", idx + 1, switchboard.switchboard_inputs.len());
+  for (idx, switchboard_witness) in setup.switchboard.switchboard_inputs.iter().enumerate() {
+    info!("Step {} of {} witnesses", idx + 1, setup.switchboard.switchboard_inputs.len());
 
     // Determine program counter based on current state
     let program_counter = match &recursive_snark {
-      None => switchboard.initial_circuit_index(),
+      None => setup.switchboard.initial_circuit_index(),
       Some(snark) => {
         // TODO: I honestly am surprised that the prover chose to use a usize instead of a field
         // element for the PC, it would be cleaner to do otherwise
@@ -97,16 +99,16 @@ pub fn run(setup: Setup, switchboard: &Switchboard) -> Result<RecursiveSNARK<E1>
     debug!("Program counter = {:?}", program_counter);
 
     // Prepare circuits for this step
-    let mut circuit_primary = switchboard.primary_circuit(program_counter);
+    let mut circuit_primary = setup.switchboard.primary_circuit(program_counter);
     circuit_primary.witness = Some(switchboard_witness.clone());
-    let circuit_secondary = switchboard.secondary_circuit();
+    let circuit_secondary = setup.switchboard.secondary_circuit();
 
     // Initialize or update the recursive SNARK
     if recursive_snark.is_none() {
       // Initialize a new recursive SNARK for the first step
       recursive_snark = Some(RecursiveSNARK::new(
-        &public_params,
-        switchboard,
+        &setup.params,
+        &setup.switchboard,
         &circuit_primary,
         &circuit_secondary,
         z0_primary,
@@ -117,7 +119,7 @@ pub fn run(setup: Setup, switchboard: &Switchboard) -> Result<RecursiveSNARK<E1>
     // Prove the next step
     info!("Proving single step...");
     let snark = recursive_snark.as_mut().unwrap();
-    snark.prove_step(&public_params, &circuit_primary, &circuit_secondary)?;
+    snark.prove_step(&setup.params, &circuit_primary, &circuit_secondary)?;
     info!("Done proving single step...");
 
     // TODO: Feature gate this or just remove it
@@ -132,39 +134,27 @@ pub fn run(setup: Setup, switchboard: &Switchboard) -> Result<RecursiveSNARK<E1>
   Ok(recursive_snark.unwrap())
 }
 
-// TODO: We need to make this not take in the programs
 pub fn compress(
-  setup: Setup,
+  setup: &Setup<Ready>,
   recursive_snark: &RecursiveSNARK<E1>,
-  programs: &[NoirProgram],
 ) -> Result<CompressedProof, ProofError> {
-  let pk = ProverKey {
-    pk_primary:   S1::initialize_pk(setup.aux_params.ck_primary.clone(), setup.vk_digest_primary)?,
-    pk_secondary: S2::initialize_pk(
-      setup.aux_params.ck_secondary.clone(),
-      setup.vk_digest_secondary,
-    )?,
-  };
-  // let pk:  = CompressedSNARK::<E1, S1, S2>::initialize_pk(
-  //   public_params,
-  //   vk_digest_primary,
-  //   vk_digest_secondary,
-  // )
-  // .unwrap();
+  let pk = CompressedSNARK::<E1, S1, S2>::initialize_pk(
+    &setup.params,
+    setup.vk_digest_primary,
+    setup.vk_digest_secondary,
+  )
+  .unwrap();
   debug!(
     "initialized pk pk_primary.digest={:?}, pk_secondary.digest={:?}",
     pk.pk_primary.vk_digest, pk.pk_secondary.vk_digest
   );
-  let public_params = setup.into_public_params(programs);
 
   debug!("`CompressedSNARK::prove STARTING PROVING!");
   let proof = FoldingProof {
-    proof:           CompressedSNARK::<E1, S1, S2>::prove(&public_params, &pk, recursive_snark)?,
+    proof:           CompressedSNARK::<E1, S1, S2>::prove(&setup.params, &pk, recursive_snark)?,
     verifier_digest: pk.pk_primary.vk_digest,
   };
   debug!("`CompressedSNARK::prove completed!");
 
   Ok(proof)
 }
-
-

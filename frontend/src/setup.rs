@@ -7,49 +7,80 @@ use client_side_prover::{
 };
 use tracing::debug;
 
-use crate::{error::ProofError, noir::NoirProgram, program, AuxParams, E1, S1, S2};
+use crate::{
+  error::ProofError,
+  noir::NoirProgram,
+  program::{self, Switchboard},
+  AuxParams, E1, S1, S2,
+};
+
+// TODO: Seal this
+pub trait Status {
+  type Switchboard;
+  type PublicParams;
+}
+
+#[derive(Debug, Clone)]
+pub struct Ready;
+
+impl Status for Ready {
+  type PublicParams = PublicParams<E1>;
+  type Switchboard = Switchboard;
+}
+
+#[derive(Debug, Clone)]
+pub struct Empty;
+
+impl Status for Empty {
+  type PublicParams = AuxParams;
+  type Switchboard = ();
+}
 
 // TODO: This could probably just store the programs with it
 #[derive(Clone, Debug)]
-pub struct Setup {
+pub struct Setup<S: Status> {
   /// Auxiliary parameters
-  pub aux_params:          AuxParams,
+  pub params:              S::PublicParams,
   /// Primary verification key digest
   pub vk_digest_primary:   <E1 as Engine>::Scalar,
   /// Secondary verification key digest
   pub vk_digest_secondary: <Dual<E1> as Engine>::Scalar,
+
+  pub switchboard: S::Switchboard,
 }
 
 #[cfg(test)]
-impl PartialEq for Setup {
+impl<S: Status> PartialEq for Setup<S> {
   fn eq(&self, other: &Self) -> bool {
     self.vk_digest_primary == other.vk_digest_primary
       && self.vk_digest_secondary == other.vk_digest_secondary
   }
 }
 
-impl Setup {
-  pub fn new(programs: &[NoirProgram]) -> Self {
-    let switchboard = program::Switchboard::new(programs.to_vec(), vec![], vec![], 0);
+impl Setup<Ready> {
+  pub fn new(switchboard: Switchboard) -> Self {
     let public_params = PublicParams::setup(&switchboard, &*default_ck_hint(), &*default_ck_hint());
     let (pk, _vk) = CompressedSNARK::<E1, S1, S2>::setup(&public_params).unwrap();
-    let (_, aux_params) = public_params.into_parts();
 
     Setup {
-      aux_params,
+      params: public_params,
       vk_digest_primary: pk.pk_primary.vk_digest,
       vk_digest_secondary: pk.pk_secondary.vk_digest,
+      switchboard,
     }
   }
 
-  pub fn into_public_params(self, programs: &[NoirProgram]) -> PublicParams<E1> {
-    let switchboard = program::Switchboard::new(programs.to_vec(), vec![], vec![], 0);
-    // TODO: This can print out the constraints and variables for each circuit
-    PublicParams::from_parts(get_circuit_shapes(&switchboard), self.aux_params)
+  fn into_empty(self) -> Setup<Empty> {
+    Setup {
+      params:              self.params.into_parts().1,
+      vk_digest_primary:   self.vk_digest_primary,
+      vk_digest_secondary: self.vk_digest_secondary,
+      switchboard:         (),
+    }
   }
 
-  pub fn store_file(&self, path: &std::path::PathBuf) -> Result<Vec<u8>, ProofError> {
-    let bytes = self.to_bytes();
+  pub fn store_file(self, path: &std::path::PathBuf) -> Result<Vec<u8>, ProofError> {
+    let bytes = self.into_empty().to_bytes();
     if let Some(parent) = path.parent() {
       std::fs::create_dir_all(parent)?;
     }
@@ -61,14 +92,24 @@ impl Setup {
   }
 }
 
+impl Setup<Empty> {
+  pub fn into_ready(self, switchboard: Switchboard) -> Setup<Ready> {
+    Setup {
+      params: PublicParams::from_parts(get_circuit_shapes(&switchboard), self.params),
+      vk_digest_primary: self.vk_digest_primary,
+      vk_digest_secondary: self.vk_digest_secondary,
+      switchboard,
+    }
+  }
+}
 // TODO: We may be able to just use rkyv
-impl FastSerde for Setup {
+impl FastSerde for Setup<Empty> {
   /// Initialize ProvingParams from an efficiently serializable data format.
   fn from_bytes(bytes: &[u8]) -> Result<Self, SerdeByteError> {
     let mut cursor = Cursor::new(bytes);
     Self::validate_header(&mut cursor, SerdeByteTypes::ProverParams, 3)?;
 
-    let aux_params =
+    let params =
       Self::read_section_bytes(&mut cursor, 1).map(|bytes| AuxParams::from_bytes(&bytes))??;
 
     let vk_digest_primary = Self::read_section_bytes(&mut cursor, 2)
@@ -83,7 +124,7 @@ impl FastSerde for Setup {
       .into_option()
       .ok_or(SerdeByteError::G1DecodeError)?;
 
-    Ok(Setup { aux_params, vk_digest_primary, vk_digest_secondary })
+    Ok(Setup { params, vk_digest_primary, vk_digest_secondary, switchboard: () })
   }
 
   /// Convert ProvingParams to an efficient serialization.
@@ -93,7 +134,7 @@ impl FastSerde for Setup {
     out.push(SerdeByteTypes::ProverParams as u8);
     out.push(3); // num_sections
 
-    Self::write_section_bytes(&mut out, 1, &self.aux_params.to_bytes());
+    Self::write_section_bytes(&mut out, 1, &self.params.to_bytes());
     Self::write_section_bytes(&mut out, 2, &self.vk_digest_primary.to_bytes());
     Self::write_section_bytes(&mut out, 3, &self.vk_digest_secondary.to_bytes());
 
@@ -108,26 +149,32 @@ mod tests {
 
   #[test]
   fn test_setup_and_params() {
-    let setup = Setup::new(&[square_zeroth()]);
-    let _ = setup.into_public_params(&[square_zeroth()]);
+    let setup = Setup::new(Switchboard::new(vec![square_zeroth()], vec![], vec![], 0));
+    assert_eq!(setup.params.num_constraints_and_variables(0), (10008, 10001));
   }
 
   #[test]
   fn test_setup_serialize() {
-    let setup = Setup::new(&[square_zeroth()]);
-    let serialized = setup.to_bytes();
-    let deserialized = Setup::from_bytes(&serialized).unwrap();
-    assert_eq!(setup, deserialized);
+    let setup = Setup::new(Switchboard::new(vec![square_zeroth()], vec![], vec![], 0));
+    let empty_setup = setup.into_empty();
+    let serialized = empty_setup.to_bytes();
+    let deserialized = Setup::<Empty>::from_bytes(&serialized).unwrap();
+    assert_eq!(empty_setup, deserialized);
   }
 
   #[test]
   fn test_setup_store_file() {
-    let setup = Setup::new(&[square_zeroth()]);
+    let switchboard = Switchboard::new(vec![square_zeroth()], vec![], vec![], 0);
+    let setup = Setup::new(switchboard.clone());
+    let vk_digest_primary = setup.vk_digest_primary;
+    let vk_digest_secondary = setup.vk_digest_secondary;
     let path = tempfile::tempdir().unwrap().into_path();
     let bytes = setup.store_file(&path.join("setup.bytes")).unwrap();
     assert!(!bytes.is_empty());
     let stored_bytes = std::fs::read(path.join("setup.bytes")).unwrap();
-    let deserialized = Setup::from_bytes(&stored_bytes).unwrap();
-    assert_eq!(setup, deserialized);
+    let deserialized = Setup::<Empty>::from_bytes(&stored_bytes).unwrap();
+    let ready_setup = deserialized.into_ready(switchboard);
+    assert_eq!(vk_digest_primary, ready_setup.vk_digest_primary);
+    assert_eq!(vk_digest_secondary, ready_setup.vk_digest_secondary);
   }
 }
