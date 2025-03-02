@@ -17,7 +17,7 @@ use bellpepper_core::{
 use client_side_prover::supernova::StepCircuit;
 use ff::PrimeField;
 use noirc_abi::{input_parser::InputValue, Abi, AbiType, InputMap};
-use tracing::trace;
+use tracing::{debug, error, info, trace};
 
 use super::*;
 
@@ -141,32 +141,64 @@ impl StepCircuit<Scalar> for NoirProgram {
     // Process gates
     for (idx, opcode) in self.circuit().opcodes.iter().enumerate() {
       if let Opcode::AssertZero(gate) = opcode {
-        let mut left_terms = LinearCombination::zero();
-        let mut right_terms = LinearCombination::zero();
-        let mut final_terms = LinearCombination::zero();
+        // In noir/ACVM, the constraint is (left*right + linear_terms + constant = 0)
+        // We need to build this as a single LinearCombination that must equal zero
+        let mut constraint = LinearCombination::zero();
 
-        // Process multiplication terms
+        // For multiplication terms, we should create intermediate variables
         for mul_term in &gate.mul_terms {
+          // Get variables for the factors
           let left_var = get_var(&mul_term.1, &mut allocated_vars, cs)?;
           let right_var = get_var(&mul_term.2, &mut allocated_vars, cs)?;
-          left_terms = left_terms + (convert_to_halo2_field(mul_term.0), left_var);
-          right_terms = right_terms + (Scalar::one(), right_var);
+
+          // Create a variable for their product (done implicitly by bellpepper)
+          let product = cs.alloc(
+            || format!("mul_term_product_g{idx}"),
+            || {
+              // Retrieve witness values if available (or default to zero)
+              let left_val = acvm_witness_map
+                .as_ref()
+                .and_then(|map| map.get(&mul_term.1).copied())
+                .unwrap_or_default();
+              let right_val = acvm_witness_map
+                .as_ref()
+                .and_then(|map| map.get(&mul_term.2).copied())
+                .unwrap_or_default();
+              Ok(convert_to_halo2_field(left_val * right_val))
+            },
+          )?;
+
+          // Add a constraint that product = left * right
+          cs.enforce(
+            || format!("mul_constraint_g{idx}"),
+            |lc| lc + left_var,
+            |lc| lc + right_var,
+            |lc| lc + product,
+          );
+
+          // Add this product term to our main constraint
+          constraint = constraint + (convert_to_halo2_field(mul_term.0), product);
         }
 
         // Process addition terms
         for add_term in &gate.linear_combinations {
           let var = get_var(&add_term.1, &mut allocated_vars, cs)?;
-          final_terms = final_terms + (convert_to_halo2_field(add_term.0), var);
+          constraint = constraint + (convert_to_halo2_field(add_term.0), var);
         }
 
         // Handle constant term
         if !gate.q_c.is_zero() {
-          final_terms = final_terms
-            - (convert_to_halo2_field(gate.q_c), Variable::new_unchecked(Index::Input(0)));
+          constraint = constraint
+            + (convert_to_halo2_field(gate.q_c), Variable::new_unchecked(Index::Input(0)));
         }
 
-        // Enforce constraint
-        cs.enforce(|| format!("g{idx}"), |_| left_terms, |_| right_terms, |_| final_terms);
+        // Enforce constraint: 1 * 0 = constraint (i.e., constraint must be zero)
+        cs.enforce(
+          || format!("gate_constraint_g{idx}"),
+          |lc| lc + Variable::new_unchecked(Index::Input(0)), // 1
+          |lc| lc,                                            // 0
+          |_| constraint,
+        );
       } else {
         panic!("non-AssertZero gate {idx} of type {opcode:?}");
       }

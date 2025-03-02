@@ -149,9 +149,9 @@ pub fn run(switchboard: &Switchboard) -> Result<RecursiveSNARK<E1>, ProofError> 
     info!("Done proving single step...");
 
     // TODO: For some reason this is failing
-    // info!("Verifying single step...");
-    // snark.verify(&public_params, snark.z0_primary(), z0_secondary)?;
-    // info!("Single step verification done");
+    info!("Verifying single step...");
+    snark.verify(&public_params, snark.z0_primary(), z0_secondary)?;
+    info!("Single step verification done");
   }
 
   trace!("Recursive loop of `program::run()` elapsed: {:?}", time.elapsed());
