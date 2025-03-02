@@ -84,6 +84,11 @@ type S2 = BatchedRelaxedR1CSSNARK<E2, EE2>;
 pub mod demo {
   use crate::noir::NoirProgram;
 
+  pub fn basic() -> NoirProgram {
+    let bytecode = std::fs::read("../target/basic.json").expect("Failed to read Noir program file");
+    NoirProgram::new(&bytecode)
+  }
+
   pub fn add_external() -> NoirProgram {
     let bytecode =
       std::fs::read("../target/add_external.json").expect("Failed to read Noir program file");
@@ -99,6 +104,12 @@ pub mod demo {
   pub fn swap_memory() -> NoirProgram {
     let bytecode =
       std::fs::read("../target/swap_memory.json").expect("Failed to read Noir program file");
+    NoirProgram::new(&bytecode)
+  }
+
+  pub fn poseidon() -> NoirProgram {
+    let bytecode =
+      std::fs::read("../target/poseidon.json").expect("Failed to read Noir program file");
     NoirProgram::new(&bytecode)
   }
 }

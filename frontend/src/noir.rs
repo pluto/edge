@@ -35,8 +35,11 @@ pub struct NoirProgram {
     deserialize_with = "Program::deserialize_program_base64"
   )]
   pub bytecode:      Program<GenericFieldElement<Fr>>,
-  pub debug_symbols: String,
-  pub file_map:      HashMap<String, String>,
+  // TODO: We likely don't need these.
+  pub debug_symbols: serde_json::Value,
+  // TODO: We likely don't need these.
+  pub file_map:      serde_json::Value,
+
   pub names:         Vec<String>,
   pub brillig_names: Vec<String>,
   #[serde(skip)]
@@ -152,8 +155,7 @@ impl StepCircuit<Scalar> for NoirProgram {
           let left_var = get_var(&mul_term.1, &mut allocated_vars, cs)?;
           let right_var = get_var(&mul_term.2, &mut allocated_vars, cs)?;
 
-          // Add to A and B linear combinations (negated due to the `AssertZero` gate versus the A*B
-          // = C form)
+          // Add to A and B (negated due to the `AssertZero` gate versus the A*B = C form)
           a_lc = a_lc + (-convert_to_halo2_field(mul_term.0), left_var);
           b_lc = b_lc + (Scalar::one(), right_var);
         }
@@ -169,7 +171,7 @@ impl StepCircuit<Scalar> for NoirProgram {
           c_lc = c_lc + (convert_to_halo2_field(gate.q_c), CS::one());
         }
 
-        // Enforce A * B - C = 0
+        // Enforce A * B = C
         cs.enforce(
           || format!("constraint_g{idx}"),
           |_| a_lc.clone(),
@@ -247,7 +249,7 @@ mod tests {
   use client_side_prover::bellpepper::shape_cs::ShapeCS;
 
   use super::*;
-  use crate::demo::square_zeroth;
+  use crate::demo::{basic, poseidon, square_zeroth};
 
   fn add_external() -> NoirProgram {
     let json_path = "../target/add_external.json";
@@ -292,13 +294,32 @@ mod tests {
     }
   }
 
+  // TODO: Worth checking here that each gate has mul, add, and constant terms.
+  #[test]
+  fn test_constraint_system_basic() {
+    let program = basic();
+
+    let mut cs = ShapeCS::<E1>::new();
+    let pc = Some(AllocatedNum::alloc(&mut cs, || Ok(Scalar::from(0))).unwrap());
+    let z = vec![
+      AllocatedNum::alloc(&mut cs, || Ok(Scalar::from(2))).unwrap(),
+      AllocatedNum::alloc(&mut cs, || Ok(Scalar::from(1))).unwrap(),
+    ];
+
+    let _ = program.synthesize(&mut cs, pc.as_ref(), z.as_ref()).unwrap();
+    assert_eq!(cs.num_constraints(), 3);
+  }
+
   #[test]
   fn test_constraint_system_add_external() {
     let program = add_external();
 
     let mut cs = ShapeCS::<E1>::new();
     let pc = Some(AllocatedNum::alloc(&mut cs, || Ok(Scalar::from(0))).unwrap());
-    let z = vec![AllocatedNum::alloc(&mut cs, || Ok(Scalar::from(1))).unwrap()];
+    let z = vec![
+      AllocatedNum::alloc(&mut cs, || Ok(Scalar::from(2))).unwrap(),
+      AllocatedNum::alloc(&mut cs, || Ok(Scalar::from(1))).unwrap(),
+    ];
 
     let _ = program.synthesize(&mut cs, pc.as_ref(), z.as_ref()).unwrap();
     assert_eq!(cs.num_constraints(), 3);
@@ -310,9 +331,27 @@ mod tests {
 
     let mut cs = ShapeCS::<E1>::new();
     let pc = Some(AllocatedNum::alloc(&mut cs, || Ok(Scalar::from(0))).unwrap());
-    let z = vec![AllocatedNum::alloc(&mut cs, || Ok(Scalar::from(1))).unwrap()];
+    let z = vec![
+      AllocatedNum::alloc(&mut cs, || Ok(Scalar::from(2))).unwrap(),
+      AllocatedNum::alloc(&mut cs, || Ok(Scalar::from(1))).unwrap(),
+    ];
 
     let _ = program.synthesize(&mut cs, pc.as_ref(), z.as_ref()).unwrap();
     assert_eq!(cs.num_constraints(), 3);
+  }
+
+  #[test]
+  fn test_constraint_system_poseidon() {
+    let program = poseidon();
+
+    let mut cs = ShapeCS::<E1>::new();
+    let pc = Some(AllocatedNum::alloc(&mut cs, || Ok(Scalar::from(0))).unwrap());
+    let z = vec![
+      AllocatedNum::alloc(&mut cs, || Ok(Scalar::from(2))).unwrap(),
+      AllocatedNum::alloc(&mut cs, || Ok(Scalar::from(1))).unwrap(),
+    ];
+
+    let _ = program.synthesize(&mut cs, pc.as_ref(), z.as_ref()).unwrap();
+    assert_eq!(cs.num_constraints(), 320);
   }
 }
