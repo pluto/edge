@@ -1,63 +1,17 @@
-use std::collections::HashMap;
-
-use acvm::acir::{acir_field::GenericFieldElement, circuit::Opcode};
-use client_side_prover_frontend::program::{run, Switchboard, SwitchboardInputs};
+use acvm::acir::acir_field::GenericFieldElement;
+use client_side_prover_frontend::program::{run, Switchboard};
 use noirc_abi::{input_parser::InputValue, InputMap};
-use tracing::trace;
 
 use super::*;
-
-fn debug_acir_circuit(circuit: &NoirProgram) {
-  trace!("=== ACIR Circuit Debug ===");
-  trace!("ABI: {:?}", circuit.abi);
-
-  trace!("Private parameters: {:?}", circuit.circuit().private_parameters);
-  trace!("Public parameters: {:?}", circuit.circuit().public_parameters);
-  trace!("Return values: {:?}", circuit.circuit().return_values);
-
-  trace!("ACIR Opcodes:");
-  for (i, op) in circuit.circuit().opcodes.iter().enumerate() {
-    if let Opcode::AssertZero(gate) = op {
-      trace!(
-        "  Gate {}: mul_terms={:?}, linear_combinations={:?}, q_c={:?}",
-        i,
-        gate.mul_terms,
-        gate.linear_combinations,
-        gate.q_c
-      );
-    } else {
-      trace!("  Opcode {}: {:?}", i, op);
-    }
-  }
-  trace!("=== End Debug ===");
-}
 
 #[test]
 #[traced_test]
 fn test_ivc() {
   let circuit = square_zeroth();
   let switchboard_inputs = vec![
-    SwitchboardInputs {
-      private_inputs: InputMap::from([(
-        "next_pc".to_string(),
-        InputValue::Field(GenericFieldElement::from(0_u64)),
-      )]),
-      pc:             0,
-    },
-    SwitchboardInputs {
-      private_inputs: InputMap::from([(
-        "next_pc".to_string(),
-        InputValue::Field(GenericFieldElement::from(0_u64)),
-      )]),
-      pc:             0,
-    },
-    SwitchboardInputs {
-      private_inputs: InputMap::from([(
-        "next_pc".to_string(),
-        InputValue::Field(GenericFieldElement::from(0_u64)),
-      )]),
-      pc:             0,
-    },
+    InputMap::from([("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(0_u64)))]),
+    InputMap::from([("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(0_u64)))]),
+    InputMap::from([("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(0_u64)))]),
   ];
 
   let memory = Switchboard {
@@ -77,34 +31,27 @@ fn test_ivc() {
 #[traced_test]
 fn test_ivc_private_inputs() {
   let circuit = add_external();
-  debug_acir_circuit(&circuit);
   let switchboard_inputs = vec![
-    SwitchboardInputs {
-      private_inputs: InputMap::from([
-        ("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(0_u64))),
-        (
-          "external".to_string(),
-          InputValue::Vec(vec![
-            InputValue::Field(GenericFieldElement::from(3_u64)),
-            InputValue::Field(GenericFieldElement::from(3_u64)),
-          ]),
-        ),
-      ]),
-      pc:             0,
-    },
-    SwitchboardInputs {
-      private_inputs: InputMap::from([
-        ("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(0_u64))),
-        (
-          "external".to_string(),
-          InputValue::Vec(vec![
-            InputValue::Field(GenericFieldElement::from(420_u64)),
-            InputValue::Field(GenericFieldElement::from(69_u64)),
-          ]),
-        ),
-      ]),
-      pc:             0,
-    },
+    InputMap::from([
+      ("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(0_u64))),
+      (
+        "external".to_string(),
+        InputValue::Vec(vec![
+          InputValue::Field(GenericFieldElement::from(3_u64)),
+          InputValue::Field(GenericFieldElement::from(3_u64)),
+        ]),
+      ),
+    ]),
+    InputMap::from([
+      ("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(0_u64))),
+      (
+        "external".to_string(),
+        InputValue::Vec(vec![
+          InputValue::Field(GenericFieldElement::from(420_u64)),
+          InputValue::Field(GenericFieldElement::from(69_u64)),
+        ]),
+      ),
+    ]),
   ];
 
   let memory = Switchboard {

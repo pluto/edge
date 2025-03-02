@@ -18,19 +18,13 @@ pub mod data;
 /// Compressed proof type
 pub type CompressedProof = FoldingProof<CompressedSNARK<E1, S1, S2>, Scalar>;
 
-#[derive(Debug, Clone)]
-pub struct SwitchboardInputs {
-  pub private_inputs: InputMap,
-  pub pc:             usize,
-}
-
 // TODO: Use a mapping of program counter to circuit index
 #[derive(Debug, Clone)]
 pub struct Switchboard {
   pub circuits:              Vec<NoirProgram>,
   pub public_input:          Vec<Scalar>,
   pub initial_circuit_index: usize,
-  pub switchboard_inputs:    Vec<SwitchboardInputs>,
+  pub switchboard_inputs:    Vec<InputMap>,
 }
 
 impl NonUniformCircuit<E1> for Switchboard {

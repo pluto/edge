@@ -16,11 +16,10 @@ use bellpepper_core::{
 };
 use client_side_prover::supernova::StepCircuit;
 use ff::PrimeField;
-use noirc_abi::{input_parser::InputValue, Abi, AbiType};
+use noirc_abi::{input_parser::InputValue, Abi, AbiType, InputMap};
 use tracing::trace;
 
 use super::*;
-use crate::program::SwitchboardInputs;
 
 // TODO: If we deserialize more here and get metadata, we could more easily look at witnesses, etc.
 // Especially if we want to output a constraint to the PC. Using the abi would be handy for
@@ -41,7 +40,7 @@ pub struct NoirProgram {
   pub names:         Vec<String>,
   pub brillig_names: Vec<String>,
   #[serde(skip)]
-  pub witness:       Option<SwitchboardInputs>,
+  pub witness:       Option<InputMap>,
   #[serde(skip)]
   pub index:         usize,
 }
@@ -55,7 +54,7 @@ impl NoirProgram {
     &self.bytecode.unconstrained_functions
   }
 
-  pub fn set_inputs(&mut self, switchboard_witness: SwitchboardInputs) {
+  pub fn set_inputs(&mut self, switchboard_witness: InputMap) {
     self.witness = Some(switchboard_witness);
   }
 }
@@ -88,7 +87,7 @@ impl StepCircuit<Scalar> for NoirProgram {
 
       // Prepare inputs with registers
       // TODO: Can we reove this clone?
-      let mut inputs_with_registers = inputs.private_inputs.clone();
+      let mut inputs_with_registers = inputs.clone();
       inputs_with_registers.insert(
         "registers".to_string(),
         InputValue::Vec(
