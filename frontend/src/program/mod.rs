@@ -18,7 +18,8 @@ pub mod data;
 /// Compressed proof type
 pub type CompressedProof = FoldingProof<CompressedSNARK<E1, S1, S2>, Scalar>;
 
-// TODO: Use a mapping of program counter to circuit index
+// NOTE: These are `pub(crate)` to avoid exposing the `index` field to the
+// outside world.
 #[derive(Debug, Clone)]
 pub struct Switchboard {
   pub(crate) circuits:              Vec<NoirProgram>,
@@ -34,7 +35,8 @@ impl Switchboard {
     public_input: Vec<Scalar>,
     initial_circuit_index: usize,
   ) -> Self {
-    // Set the index of each circuit given the order they are passed in
+    // Set the index of each circuit given the order they are passed in since this is skipped in
+    // serde
     circuits.iter_mut().enumerate().for_each(|(i, c)| c.index = i);
     Self { circuits, public_input, initial_circuit_index, switchboard_inputs }
   }
