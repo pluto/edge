@@ -1,3 +1,9 @@
 [workspace]
-members = ["nivc", "examples/add_external", "examples/square_zeroth", "examples/swap_memory", "examples/poseidon", "examples/basic"]
-
+members=[
+    "nivc",
+    "examples/add_external",
+    "examples/square_zeroth",
+    "examples/swap_memory",
+    "examples/poseidon",
+    "examples/basic",
+]

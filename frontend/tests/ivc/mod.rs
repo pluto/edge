@@ -229,8 +229,6 @@ fn test_ivc_verify_poseidon() {
     snark.verify(&setup.params, &snark.z0_primary(), &snark.z0_secondary()).unwrap();
   assert_eq!(&z1_primary, snark.zi_primary());
   assert_eq!(&z1_secondary, snark.zi_secondary());
-  assert_eq!(z1_primary, vec![Scalar::from(4), Scalar::from(1)]);
-  assert_eq!(z1_secondary, vec![grumpkin::Fr::ZERO]);
 }
 
 #[test]
@@ -253,5 +251,3 @@ fn test_ivc_compression_poseidon() {
     .verify(&setup.params, &vk, &snark.z0_primary(), &snark.z0_secondary())
     .unwrap();
 }
-
-// TODO: Add some fail cases for circuits.

@@ -112,4 +112,9 @@ pub mod demo {
       std::fs::read("../target/poseidon.json").expect("Failed to read Noir program file");
     NoirProgram::new(&bytecode)
   }
+
+  pub fn http() -> NoirProgram {
+    let bytecode = std::fs::read("../target/http.json").expect("Failed to read Noir program file");
+    NoirProgram::new(&bytecode)
+  }
 }

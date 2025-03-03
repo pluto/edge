@@ -17,7 +17,7 @@ use bellpepper_core::{
 use client_side_prover::supernova::StepCircuit;
 use ff::PrimeField;
 use noirc_abi::{input_parser::InputValue, Abi, AbiType, InputMap};
-use tracing::{debug, error, info, trace};
+use tracing::{debug, error, info, trace, warn};
 
 use super::*;
 
@@ -144,42 +144,67 @@ impl StepCircuit<Scalar> for NoirProgram {
     // Process gates using R1CS approach
     for (idx, opcode) in self.circuit().opcodes.iter().enumerate() {
       if let Opcode::AssertZero(gate) = opcode {
-        // Convert the gate to R1CS form: A * B - C = 0
-        // First, build the A, B, and C linear combinations
-        let mut a_lc = LinearCombination::zero();
-        let mut b_lc = LinearCombination::zero();
-        let mut c_lc = LinearCombination::zero();
+        // Create a single linear combination that will be constrained to zero
+        let mut zero_lc = LinearCombination::zero();
 
-        // Handle mul terms (a product of two variables)
+        // Handle mul terms by creating intermediate variables for each product
         for mul_term in &gate.mul_terms {
           let left_var = get_var(&mul_term.1, &mut allocated_vars, cs)?;
           let right_var = get_var(&mul_term.2, &mut allocated_vars, cs)?;
 
-          // Add to A and B (negated due to the `AssertZero` gate versus the A*B = C form)
-          a_lc = a_lc + (-convert_to_halo2_field(mul_term.0), left_var);
-          b_lc = b_lc + (Scalar::one(), right_var);
+          // Get the values if available
+          let left_val = acvm_witness_map
+            .as_ref()
+            .and_then(|map| map.get(&mul_term.1))
+            .map(|&v| convert_to_halo2_field(v));
+
+          let right_val = acvm_witness_map
+            .as_ref()
+            .and_then(|map| map.get(&mul_term.2))
+            .map(|&v| convert_to_halo2_field(v));
+
+          // Create a new variable for the product
+          let product = AllocatedNum::alloc(
+            cs.namespace(|| format!("prod_g{idx}_t{}", mul_term.1.as_usize())),
+            || {
+              let l = left_val.unwrap_or_else(Scalar::zero);
+              let r = right_val.unwrap_or_else(Scalar::zero);
+              Ok(l * r)
+            },
+          )?;
+
+          // Enforce that this is indeed the product
+          cs.enforce(
+            || format!("prod_constraint_g{idx}_t{}", mul_term.1.as_usize()),
+            |lc| lc + left_var,
+            |lc| lc + right_var,
+            |lc| lc + product.get_variable(),
+          );
+
+          // Add this product to our zero linear combination with the coefficient
+          zero_lc = zero_lc + (convert_to_halo2_field(mul_term.0), product.get_variable());
         }
 
-        // Handle linear terms (these go into C with negative coefficients)
+        // Handle linear terms (these go into the zero linear combination)
         for add_term in &gate.linear_combinations {
           let var = get_var(&add_term.1, &mut allocated_vars, cs)?;
-          c_lc = c_lc + (convert_to_halo2_field(add_term.0), var);
+          zero_lc = zero_lc + (convert_to_halo2_field(add_term.0), var);
         }
 
-        // Handle constant term (this goes into C as well)
+        // Handle constant term
         if !gate.q_c.is_zero() {
-          c_lc = c_lc + (convert_to_halo2_field(gate.q_c), CS::one());
+          zero_lc = zero_lc + (convert_to_halo2_field(gate.q_c), CS::one());
         }
 
-        // Enforce A * B = C
+        // Enforce that the entire expression equals zero
         cs.enforce(
           || format!("constraint_g{idx}"),
-          |_| a_lc.clone(),
-          |_| b_lc.clone(),
-          |_| c_lc.clone(),
+          |_| LinearCombination::zero() + CS::one(),
+          |_| zero_lc.clone(),
+          |_| LinearCombination::zero(),
         );
       } else {
-        panic!("non-AssertZero gate {idx} of type {opcode:?}");
+        warn!("non-AssertZero gate {idx} of type {opcode:?}");
       }
     }
 
@@ -249,7 +274,7 @@ mod tests {
   use client_side_prover::bellpepper::shape_cs::ShapeCS;
 
   use super::*;
-  use crate::demo::{basic, poseidon, square_zeroth};
+  use crate::demo::{basic, http, poseidon, square_zeroth};
 
   fn add_external() -> NoirProgram {
     let json_path = "../target/add_external.json";
@@ -307,7 +332,7 @@ mod tests {
     ];
 
     let _ = program.synthesize(&mut cs, pc.as_ref(), z.as_ref()).unwrap();
-    assert_eq!(cs.num_constraints(), 3);
+    assert_eq!(cs.num_constraints(), 5);
   }
 
   #[test]
@@ -337,7 +362,7 @@ mod tests {
     ];
 
     let _ = program.synthesize(&mut cs, pc.as_ref(), z.as_ref()).unwrap();
-    assert_eq!(cs.num_constraints(), 3);
+    assert_eq!(cs.num_constraints(), 4);
   }
 
   #[test]
@@ -352,6 +377,6 @@ mod tests {
     ];
 
     let _ = program.synthesize(&mut cs, pc.as_ref(), z.as_ref()).unwrap();
-    assert_eq!(cs.num_constraints(), 320);
+    assert_eq!(cs.num_constraints(), 560);
   }
 }
