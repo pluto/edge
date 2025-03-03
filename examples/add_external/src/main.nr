@@ -1,10 +1,16 @@
-use nivc::FoldingOutput;
+use nivc::FoldingVariables;
 
 /// Add two external values to two registers that are folded across circuits.
 pub fn main(
-    registers: pub [Field; 2],
+    folding_variables: pub FoldingVariables<2>,
     external: [Field; 2],
     next_pc: Field,
-) -> pub FoldingOutput<2> {
-    FoldingOutput { registers: [external[0] + registers[0], external[1] + registers[1]], next_pc }
+) -> pub FoldingVariables<2> {
+    FoldingVariables {
+        registers: [
+            external[0] + folding_variables.registers[0],
+            external[1] + folding_variables.registers[1],
+        ],
+        program_counter: next_pc,
+    }
 }

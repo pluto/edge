@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use acvm::{
   acir::{
@@ -63,8 +63,68 @@ impl NoirProgram {
 }
 
 impl StepCircuit<Scalar> for NoirProgram {
-  // TODO: This is a bit hacky. We need to add 1 for the PC
-  fn arity(&self) -> usize { self.circuit().public_parameters.0.len() }
+  fn arity(&self) -> usize {
+    // Find input type with FoldingVariables type (regardless of parameter name)
+    let input_type = self
+      .abi
+      .parameters
+      .iter()
+      .find(|param| {
+        if let AbiType::Struct { path, .. } = &param.typ {
+          path == "nivc::FoldingVariables"
+        } else {
+          false
+        }
+      })
+      .map(|param| &param.typ);
+
+    // Get the return type
+    let return_type = self.abi.return_type.as_ref().map(|ret| &ret.abi_type);
+
+    trace!("Input type: {:?}", input_type);
+    trace!("Return type: {:?}", return_type);
+
+    // Extract register length from a FoldingVariables struct
+    let get_register_length = |typ: &AbiType| -> usize {
+      if let AbiType::Struct { fields, .. } = typ {
+        if let Some((_, AbiType::Array { length, .. })) =
+          fields.iter().find(|(name, _)| name == "registers")
+        {
+          *length as usize
+        } else {
+          panic!("FoldingVariables missing registers array or invalid type")
+        }
+      } else {
+        panic!("Expected struct type for FoldingVariables")
+      }
+    };
+
+    // Check types and extract register length
+    match (input_type, return_type) {
+      (Some(input), Some(output)) => {
+        // Check that both are FoldingVariables
+        if let (AbiType::Struct { path: in_path, .. }, AbiType::Struct { path: out_path, .. }) =
+          (input, output)
+        {
+          if in_path == "nivc::FoldingVariables" && out_path == "nivc::FoldingVariables" {
+            let in_len = get_register_length(input);
+            let out_len = get_register_length(output);
+
+            if in_len != out_len {
+              panic!(
+                "Input and output must have same number of registers: {} vs {}",
+                in_len, out_len
+              );
+            }
+
+            return in_len;
+          }
+        }
+        panic!("Both input and output must be nivc::FoldingVariables structs")
+      },
+      _ => panic!("Missing input or output FoldingVariables type"),
+    }
+  }
 
   fn circuit_index(&self) -> usize { self.index }
 
@@ -89,19 +149,30 @@ impl StepCircuit<Scalar> for NoirProgram {
       );
 
       // Prepare inputs with registers
-      // TODO: Can we reove this clone?
-      let mut inputs_with_registers = inputs.clone();
-      inputs_with_registers.insert(
-        "registers".to_string(),
-        InputValue::Vec(
-          z.iter()
-            .filter_map(|var| var.get_value().map(|v| InputValue::Field(convert_to_acir_field(v))))
-            .collect(),
+      // TODO: Can we remove this clone since it may be a lot of data?
+      let mut inputs_with_folding_variables = inputs.clone();
+      // Create folding variables
+      let folding_variables = InputValue::Struct(BTreeMap::from([
+        (
+          "registers".to_string(),
+          InputValue::Vec(
+            z.iter()
+              .filter_map(|var| {
+                var.get_value().map(|v| InputValue::Field(convert_to_acir_field(v)))
+              })
+              .collect(),
+          ),
         ),
-      );
+        (
+          // TODO: This is a bit hacky with unwraps
+          "program_counter".to_string(),
+          InputValue::Field(convert_to_acir_field(pc.unwrap().get_value().unwrap())),
+        ),
+      ]));
+      inputs_with_folding_variables.insert("folding_variables".to_string(), folding_variables);
 
       // Encode inputs through ABI
-      if let Ok(encoded_map) = self.abi.encode(&inputs_with_registers, None) {
+      if let Ok(encoded_map) = self.abi.encode(&inputs_with_folding_variables, None) {
         for (witness, value) in encoded_map {
           acvm.overwrite_witness(witness, value);
         }
@@ -231,23 +302,46 @@ impl StepCircuit<Scalar> for NoirProgram {
     if let Some(noirc_abi::AbiReturnType { abi_type: AbiType::Struct { fields, .. }, .. }) =
       &self.abi.return_type
     {
-      // TODO: This should be an error.
-      let registers_length = fields
+      // Print debug information
+      trace!("Return type fields: {:?}", fields.iter().map(|(name, _)| name).collect::<Vec<_>>());
+      trace!("Return values length: {}", return_values.len());
+
+      // Check if we have the expected FoldingVariables structure
+      let registers_field = fields
         .iter()
         .find(|(name, _)| name == "registers")
-        .map(|(_, typ)| match typ {
-          AbiType::Array { length, .. } => *length as usize,
-          _ => panic!("Expected registers to be an array type"),
-        })
         .unwrap_or_else(|| panic!("Missing 'registers' field"));
 
-      let next_pc_index = registers_length;
+      let registers_length = match &registers_field.1 {
+        AbiType::Array { length, .. } => *length as usize,
+        _ => panic!("Expected registers to be an array type"),
+      };
 
-      if next_pc_index < return_values.len() {
-        let next_pc = Some(return_values[next_pc_index].clone());
-        dbg!(&next_pc);
-        let registers = return_values[..registers_length].to_vec();
+      trace!("Registers length from ABI: {}", registers_length);
+
+      // Find the index of the program_counter in the return values
+      let pc_index = fields
+        .iter()
+        .position(|(name, _)| name == "program_counter")
+        .unwrap_or_else(|| panic!("Missing 'program_counter' field"));
+
+      trace!("Program counter index: {}", pc_index);
+
+      // The Noir ABI returns fields in order, so we can directly map them to return_values
+      // First n values are the registers, followed by program_counter
+      if return_values.len() >= registers_length + 1 {
+        let registers = return_values[0..registers_length].to_vec();
+        let next_pc = Some(return_values[registers_length].clone());
+
+        trace!("Extracted {} registers and program counter", registers.len());
         return Ok((next_pc, registers));
+      } else {
+        error!(
+          "Not enough return values. Expected at least {}, got {}",
+          registers_length + 1,
+          return_values.len()
+        );
+        return Err(SynthesisError::Unsatisfiable);
       }
     }
 

@@ -15,6 +15,7 @@ use super::*;
 #[traced_test]
 fn test_ivc() {
   let programs = vec![square_zeroth()];
+  // TODO: This is a hack to get the correct number of folds when there are no external inputs.
   let switchboard_inputs = vec![
     InputMap::from([("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(0_u64)))]),
     InputMap::from([("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(0_u64)))]),
@@ -67,7 +68,7 @@ fn test_ivc_private_inputs() {
 
 #[test]
 #[traced_test]
-fn test_mock_noir_nivc() {
+fn test_nivc() {
   let programs = vec![add_external(), square_zeroth(), swap_memory()];
   let switchboard_inputs = vec![
     InputMap::from([
@@ -152,31 +153,17 @@ fn test_ivc_compression() {
 fn test_ivc_verify_basic() {
   let programs = vec![basic()];
   let switchboard_inputs = vec![InputMap::from([
-    ("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(0_u64))),
-    (
-      "external_mul".to_string(),
-      InputValue::Vec(vec![
-        InputValue::Field(GenericFieldElement::from(3_u64)),
-        InputValue::Field(GenericFieldElement::from(2_u64)),
-      ]),
-    ),
-    (
-      "external_add".to_string(),
-      InputValue::Vec(vec![
-        InputValue::Field(GenericFieldElement::from(10_u64)),
-        InputValue::Field(GenericFieldElement::from(7_u64)),
-      ]),
-    ),
+    ("external_mul".to_string(), InputValue::Field(GenericFieldElement::from(3_u64))),
+    ("external_add".to_string(), InputValue::Field(GenericFieldElement::from(10_u64))),
   ])];
-  let switchboard =
-    Switchboard::new(programs, switchboard_inputs, vec![Scalar::from(2), Scalar::from(1)], 0);
+  let switchboard = Switchboard::new(programs, switchboard_inputs, vec![Scalar::from(2)], 0);
   let setup = Setup::new(switchboard);
   let snark = run(&setup).unwrap();
   let (z1_primary, z1_secondary) =
     snark.verify(&setup.params, &snark.z0_primary(), &snark.z0_secondary()).unwrap();
   assert_eq!(&z1_primary, snark.zi_primary());
   assert_eq!(&z1_secondary, snark.zi_secondary());
-  assert_eq!(z1_primary, vec![Scalar::from(436), Scalar::from(78)]);
+  assert_eq!(z1_primary, vec![Scalar::from(436)]);
   assert_eq!(z1_secondary, vec![grumpkin::Fr::ZERO]);
 }
 
@@ -185,24 +172,10 @@ fn test_ivc_verify_basic() {
 fn test_ivc_compression_basic() {
   let programs = vec![basic()];
   let switchboard_inputs = vec![InputMap::from([
-    ("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(0_u64))),
-    (
-      "external_mul".to_string(),
-      InputValue::Vec(vec![
-        InputValue::Field(GenericFieldElement::from(3_u64)),
-        InputValue::Field(GenericFieldElement::from(2_u64)),
-      ]),
-    ),
-    (
-      "external_add".to_string(),
-      InputValue::Vec(vec![
-        InputValue::Field(GenericFieldElement::from(10_u64)),
-        InputValue::Field(GenericFieldElement::from(7_u64)),
-      ]),
-    ),
+    ("external_mul".to_string(), InputValue::Field(GenericFieldElement::from(3_u64))),
+    ("external_add".to_string(), InputValue::Field(GenericFieldElement::from(10_u64))),
   ])];
-  let switchboard =
-    Switchboard::new(programs, switchboard_inputs, vec![Scalar::from(2), Scalar::from(1)], 0);
+  let switchboard = Switchboard::new(programs, switchboard_inputs, vec![Scalar::from(2)], 0);
   let setup = Setup::new(switchboard);
   let snark = run(&setup).unwrap();
   let compressed_proof = compress(&setup, &snark).unwrap();
@@ -217,10 +190,7 @@ fn test_ivc_compression_basic() {
 #[traced_test]
 fn test_ivc_verify_poseidon() {
   let programs = vec![poseidon()];
-  let switchboard_inputs = vec![InputMap::from([(
-    "next_pc".to_string(),
-    InputValue::Field(GenericFieldElement::from(0_u64)),
-  )])];
+  let switchboard_inputs = vec![InputMap::new()];
   let switchboard =
     Switchboard::new(programs, switchboard_inputs, vec![Scalar::from(2), Scalar::from(1)], 0);
   let setup = Setup::new(switchboard);
@@ -235,10 +205,7 @@ fn test_ivc_verify_poseidon() {
 #[traced_test]
 fn test_ivc_compression_poseidon() {
   let programs = vec![poseidon()];
-  let switchboard_inputs = vec![InputMap::from([(
-    "next_pc".to_string(),
-    InputValue::Field(GenericFieldElement::from(0_u64)),
-  )])];
+  let switchboard_inputs = vec![InputMap::new()];
   let switchboard =
     Switchboard::new(programs, switchboard_inputs, vec![Scalar::from(2), Scalar::from(1)], 0);
   let setup = Setup::new(switchboard);

@@ -1,6 +1,9 @@
-use nivc::FoldingOutput;
+use nivc::FoldingVariables;
 
 /// Swap the two registers.
-pub fn main(registers: pub [Field; 2], next_pc: Field) -> pub FoldingOutput<2> {
-    FoldingOutput { registers: [registers[1], registers[0]], next_pc }
+pub fn main(folding_variables: pub FoldingVariables<2>, next_pc: Field) -> pub FoldingVariables<2> {
+    FoldingVariables {
+        registers: [folding_variables.registers[1], folding_variables.registers[0]],
+        program_counter: next_pc,
+    }
 }

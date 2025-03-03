@@ -1,17 +1,15 @@
-use nivc::FoldingOutput;
+use nivc::FoldingVariables;
 
 /// Checks general arithmetic operations.
 pub fn main(
-    registers: pub [Field; 2],
-    external_mul: [Field; 2],
-    external_add: [Field; 2],
-    next_pc: Field,
-) -> pub FoldingOutput<2> {
-    FoldingOutput {
+    folding_variables: pub FoldingVariables<1>,
+    external_mul: Field,
+    external_add: Field,
+) -> pub FoldingVariables<1> {
+    FoldingVariables {
         registers: [
-            external_mul[0] * registers[0] + external_add[0] + 420,
-            external_mul[1] * registers[1] + external_add[1] + 69,
+            external_mul * folding_variables.registers[0] + external_add + 420,
         ],
-        next_pc,
+        program_counter: folding_variables.program_counter,
     }
 }
