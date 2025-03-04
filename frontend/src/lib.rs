@@ -113,8 +113,15 @@ pub mod demo {
     NoirProgram::new(&bytecode)
   }
 
-  pub fn http() -> NoirProgram {
-    let bytecode = std::fs::read("../target/http.json").expect("Failed to read Noir program file");
+  pub fn collatz_even() -> NoirProgram {
+    let bytecode =
+      std::fs::read("../target/collatz_even.json").expect("Failed to read Noir program file");
+    NoirProgram::new(&bytecode)
+  }
+
+  pub fn collatz_odd() -> NoirProgram {
+    let bytecode =
+      std::fs::read("../target/collatz_odd.json").expect("Failed to read Noir program file");
     NoirProgram::new(&bytecode)
   }
 }

@@ -218,3 +218,19 @@ fn test_ivc_compression_poseidon() {
     .verify(&setup.params, &vk, &snark.z0_primary(), &snark.z0_secondary())
     .unwrap();
 }
+
+#[test]
+#[traced_test]
+fn test_collatz() {
+  let programs = vec![collatz_even(), collatz_odd()];
+  let switchboard_inputs = vec![InputMap::new()];
+  let switchboard = Switchboard::new(programs, switchboard_inputs, vec![Scalar::from(2)], 0);
+  let setup = Setup::new(switchboard);
+  let snark = run(&setup).unwrap();
+  let (z1_primary, z1_secondary) =
+    snark.verify(&setup.params, &snark.z0_primary(), &snark.z0_secondary()).unwrap();
+  dbg!(&z1_primary);
+  dbg!(&snark.program_counter());
+  assert_eq!(&z1_primary, snark.zi_primary());
+  assert_eq!(&z1_secondary, snark.zi_secondary());
+}

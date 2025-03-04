@@ -6,4 +6,6 @@ members=[
     "examples/swap_memory",
     "examples/poseidon",
     "examples/basic",
+    "examples/collatz_even",
+    "examples/collatz_odd",
 ]
