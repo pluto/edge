@@ -10,7 +10,7 @@ use tracing::debug;
 use crate::{
   error::ProofError,
   noir::NoirProgram,
-  program::{self, Switchboard},
+  program::{self, Memory, Switchboard},
   AuxParams, E1, S1, S2,
 };
 
@@ -21,17 +21,21 @@ pub trait Status {
 }
 
 #[derive(Debug, Clone)]
-pub struct Ready;
+pub struct Ready<M: Memory> {
+  _marker: std::marker::PhantomData<M>,
+}
 
-impl Status for Ready {
+impl<M: Memory> Status for Ready<M> {
   type PublicParams = PublicParams<E1>;
-  type Switchboard = Switchboard;
+  type Switchboard = Switchboard<M>;
 }
 
 #[derive(Debug, Clone)]
-pub struct Empty;
+pub struct Empty<M: Memory> {
+  _marker: std::marker::PhantomData<M>,
+}
 
-impl Status for Empty {
+impl<M: Memory> Status for Empty<M> {
   type PublicParams = AuxParams;
   type Switchboard = ();
 }
@@ -57,8 +61,8 @@ impl<S: Status> PartialEq for Setup<S> {
   }
 }
 
-impl Setup<Ready> {
-  pub fn new(switchboard: Switchboard) -> Self {
+impl<M: Memory> Setup<Ready<M>> {
+  pub fn new(switchboard: Switchboard<M>) -> Self {
     let public_params = PublicParams::setup(&switchboard, &*default_ck_hint(), &*default_ck_hint());
     let (pk, _vk) = CompressedSNARK::<E1, S1, S2>::setup(&public_params).unwrap();
 
@@ -70,7 +74,7 @@ impl Setup<Ready> {
     }
   }
 
-  fn into_empty(self) -> Setup<Empty> {
+  fn into_empty(self) -> Setup<Empty<M>> {
     Setup {
       params:              self.params.into_parts().1,
       vk_digest_primary:   self.vk_digest_primary,
@@ -92,8 +96,8 @@ impl Setup<Ready> {
   }
 }
 
-impl Setup<Empty> {
-  pub fn into_ready(self, switchboard: Switchboard) -> Setup<Ready> {
+impl<M: Memory> Setup<Empty<M>> {
+  pub fn into_ready(self, switchboard: Switchboard<M>) -> Setup<Ready<M>> {
     Setup {
       params: PublicParams::from_parts(get_circuit_shapes(&switchboard), self.params),
       vk_digest_primary: self.vk_digest_primary,
@@ -103,7 +107,7 @@ impl Setup<Empty> {
   }
 }
 // TODO: We may be able to just use rkyv
-impl FastSerde for Setup<Empty> {
+impl<M: Memory> FastSerde for Setup<Empty<M>> {
   /// Initialize ProvingParams from an efficiently serializable data format.
   fn from_bytes(bytes: &[u8]) -> Result<Self, SerdeByteError> {
     let mut cursor = Cursor::new(bytes);

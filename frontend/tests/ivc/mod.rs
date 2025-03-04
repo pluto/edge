@@ -1,7 +1,7 @@
 use acvm::acir::acir_field::GenericFieldElement;
 use client_side_prover::supernova::snark::CompressedSNARK;
 use client_side_prover_frontend::{
-  program::{compress, run, Switchboard},
+  program::{compress, run, Switchboard, RAM, ROM},
   setup::Setup,
   Scalar,
 };
@@ -21,8 +21,12 @@ fn test_ivc() {
     InputMap::from([("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(0_u64)))]),
     InputMap::from([("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(0_u64)))]),
   ];
-  let switchboard =
-    Switchboard::new(programs, switchboard_inputs, vec![Scalar::from(2), Scalar::from(1)], 0);
+  let switchboard = Switchboard::<ROM>::new(
+    programs,
+    switchboard_inputs,
+    vec![Scalar::from(2), Scalar::from(1)],
+    0,
+  );
   let setup = Setup::new(switchboard);
   let snark = run(&setup).unwrap();
   dbg!(&snark.zi_primary());
@@ -56,8 +60,12 @@ fn test_ivc_private_inputs() {
       ),
     ]),
   ];
-  let switchboard =
-    Switchboard::new(programs, switchboard_inputs, vec![Scalar::from(1), Scalar::from(2)], 0);
+  let switchboard = Switchboard::<ROM>::new(
+    programs,
+    switchboard_inputs,
+    vec![Scalar::from(1), Scalar::from(2)],
+    0,
+  );
   let setup = Setup::new(switchboard);
   let snark = run(&setup).unwrap();
   let zi = snark.zi_primary();
@@ -87,8 +95,12 @@ fn test_nivc() {
       InputValue::Field(GenericFieldElement::from(-1_i128)),
     )]),
   ];
-  let switchboard =
-    Switchboard::new(programs, switchboard_inputs, vec![Scalar::from(1), Scalar::from(2)], 0);
+  let switchboard = Switchboard::<ROM>::new(
+    programs,
+    switchboard_inputs,
+    vec![Scalar::from(1), Scalar::from(2)],
+    0,
+  );
   let setup = Setup::new(switchboard);
   let snark = run(&setup).unwrap();
   let zi = snark.zi_primary();
@@ -114,8 +126,12 @@ fn test_ivc_verify() {
     "next_pc".to_string(),
     InputValue::Field(GenericFieldElement::from(0_u64)),
   )])];
-  let switchboard =
-    Switchboard::new(programs, switchboard_inputs, vec![Scalar::from(2), Scalar::from(1)], 0);
+  let switchboard = Switchboard::<ROM>::new(
+    programs,
+    switchboard_inputs,
+    vec![Scalar::from(2), Scalar::from(1)],
+    0,
+  );
   let setup = Setup::new(switchboard);
   let snark = run(&setup).unwrap();
   let (z1_primary, z1_secondary) =
@@ -135,8 +151,12 @@ fn test_ivc_compression() {
     "next_pc".to_string(),
     InputValue::Field(GenericFieldElement::from(0_u64)),
   )])];
-  let switchboard =
-    Switchboard::new(programs, switchboard_inputs, vec![Scalar::from(2), Scalar::from(1)], 0);
+  let switchboard = Switchboard::<ROM>::new(
+    programs,
+    switchboard_inputs,
+    vec![Scalar::from(2), Scalar::from(1)],
+    0,
+  );
   let setup = Setup::new(switchboard);
   let snark = run(&setup).unwrap();
   let compressed_proof = compress(&setup, &snark).unwrap();
@@ -156,7 +176,7 @@ fn test_ivc_verify_basic() {
     ("external_mul".to_string(), InputValue::Field(GenericFieldElement::from(3_u64))),
     ("external_add".to_string(), InputValue::Field(GenericFieldElement::from(10_u64))),
   ])];
-  let switchboard = Switchboard::new(programs, switchboard_inputs, vec![Scalar::from(2)], 0);
+  let switchboard = Switchboard::<ROM>::new(programs, switchboard_inputs, vec![Scalar::from(2)], 0);
   let setup = Setup::new(switchboard);
   let snark = run(&setup).unwrap();
   let (z1_primary, z1_secondary) =
@@ -175,7 +195,7 @@ fn test_ivc_compression_basic() {
     ("external_mul".to_string(), InputValue::Field(GenericFieldElement::from(3_u64))),
     ("external_add".to_string(), InputValue::Field(GenericFieldElement::from(10_u64))),
   ])];
-  let switchboard = Switchboard::new(programs, switchboard_inputs, vec![Scalar::from(2)], 0);
+  let switchboard = Switchboard::<ROM>::new(programs, switchboard_inputs, vec![Scalar::from(2)], 0);
   let setup = Setup::new(switchboard);
   let snark = run(&setup).unwrap();
   let compressed_proof = compress(&setup, &snark).unwrap();
@@ -191,8 +211,12 @@ fn test_ivc_compression_basic() {
 fn test_ivc_verify_poseidon() {
   let programs = vec![poseidon()];
   let switchboard_inputs = vec![InputMap::new()];
-  let switchboard =
-    Switchboard::new(programs, switchboard_inputs, vec![Scalar::from(2), Scalar::from(1)], 0);
+  let switchboard = Switchboard::<ROM>::new(
+    programs,
+    switchboard_inputs,
+    vec![Scalar::from(2), Scalar::from(1)],
+    0,
+  );
   let setup = Setup::new(switchboard);
   let snark = run(&setup).unwrap();
   let (z1_primary, z1_secondary) =
@@ -206,8 +230,12 @@ fn test_ivc_verify_poseidon() {
 fn test_ivc_compression_poseidon() {
   let programs = vec![poseidon()];
   let switchboard_inputs = vec![InputMap::new()];
-  let switchboard =
-    Switchboard::new(programs, switchboard_inputs, vec![Scalar::from(2), Scalar::from(1)], 0);
+  let switchboard = Switchboard::<ROM>::new(
+    programs,
+    switchboard_inputs,
+    vec![Scalar::from(2), Scalar::from(1)],
+    0,
+  );
   let setup = Setup::new(switchboard);
   let snark = run(&setup).unwrap();
   let compressed_proof = compress(&setup, &snark).unwrap();
@@ -223,8 +251,16 @@ fn test_ivc_compression_poseidon() {
 #[traced_test]
 fn test_collatz() {
   let programs = vec![collatz_even(), collatz_odd()];
-  let switchboard_inputs = vec![InputMap::new()];
-  let switchboard = Switchboard::new(programs, switchboard_inputs, vec![Scalar::from(2)], 0);
+  let collatz_start = 19;
+  let initial_circuit_index = collatz_start % 2;
+  let switchboard = Switchboard::<RAM>::new(
+    programs,
+    (),
+    vec![Scalar::from(collatz_start)],
+    initial_circuit_index as usize,
+  );
+  // let switchboard =
+  //   Switchboard::<ROM>::new(programs, vec![InputMap::new()], vec![Scalar::from(2)], 0);
   let setup = Setup::new(switchboard);
   let snark = run(&setup).unwrap();
   let (z1_primary, z1_secondary) =

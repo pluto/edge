@@ -81,9 +81,6 @@ impl StepCircuit<Scalar> for NoirProgram {
     // Get the return type
     let return_type = self.abi.return_type.as_ref().map(|ret| &ret.abi_type);
 
-    trace!("Input type: {:?}", input_type);
-    trace!("Return type: {:?}", return_type);
-
     // Extract register length from a FoldingVariables struct
     let get_register_length = |typ: &AbiType| -> usize {
       if let AbiType::Struct { fields, .. } = typ {
@@ -274,8 +271,6 @@ impl StepCircuit<Scalar> for NoirProgram {
           |_| zero_lc.clone(),
           |_| LinearCombination::zero(),
         );
-      } else {
-        warn!("non-AssertZero gate {idx} of type {opcode:?}");
       }
     }
 
