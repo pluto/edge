@@ -266,4 +266,11 @@ fn test_collatz() {
   dbg!(&snark.program_counter());
   assert_eq!(&z1_primary, snark.zi_primary());
   assert_eq!(&z1_secondary, snark.zi_secondary());
+
+  let compressed_proof = compress(&setup, &snark).unwrap();
+  let (_, vk) = CompressedSNARK::setup(&setup.params).unwrap();
+  compressed_proof
+    .proof
+    .verify(&setup.params, &vk, &snark.z0_primary(), &snark.z0_secondary())
+    .unwrap();
 }

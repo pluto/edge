@@ -1,6 +1,7 @@
 use std::fs;
 
 use acvm::acir::acir_field::GenericFieldElement;
+use client_side_prover::supernova::snark::CompressedSNARK;
 use client_side_prover_frontend::{
   demo,
   program::{self, Switchboard, ROM},
@@ -48,17 +49,15 @@ fn test_end_to_end_workflow() {
   // Step 6: Ready the setup for proving with the switchboard
   let input1 =
     InputMap::from([("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(1_u64)))]);
-  let input2 = InputMap::from([(
-    "next_pc".to_string(),
-    InputValue::Field(GenericFieldElement::from(-1_i128)),
-  )]);
+  let input2 =
+    InputMap::from([("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(1_i128)))]);
   let switchboard = Switchboard::<ROM>::new(
     vec![swap_memory_program, square_program],
     vec![input1, input2],
     vec![Scalar::from(3), Scalar::from(5)],
     0,
   );
-  let setup = setup.into_ready(switchboard);
+  let setup = setup.into_ready(switchboard.clone());
   println!("6. Ready the setup for proving with the switchboard");
 
   // Step 7: Run a proof
@@ -89,9 +88,15 @@ fn test_end_to_end_workflow() {
   let compressed_proof_from_file = deserialized_proof.deserialize().unwrap();
   println!("12. Converted back to compressed proof");
 
+  // TODO: Set up a verifier from file
   // Step 13: Verify the proof digests match
-  //   assert_eq!(
-  //     compressed_proof.verifier_digest, compressed_proof_from_file.verifier_digest,
-  //     "Verifier digests don't match after serialization/deserialization"
-  //   );
+  let vsetup = Setup::<Empty<ROM>>::load_file(&file_path).unwrap();
+  let vsetup = vsetup.into_ready(switchboard);
+  let (_pk, vk) = CompressedSNARK::setup(&vsetup.params).unwrap();
+  compressed_proof_from_file.proof.verify(
+    &vsetup.params,
+    &vk,
+    recursive_snark.z0_primary(),
+    recursive_snark.z0_secondary(),
+  );
 }
