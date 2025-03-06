@@ -91,7 +91,7 @@ impl<M: Memory> NonUniformCircuit<E1> for Switchboard<M> {
   fn initial_circuit_index(&self) -> usize { self.initial_circuit_index }
 }
 
-pub fn run<M: Memory>(setup: &Setup<Ready<M>>) -> Result<RecursiveSNARK<E1>, ProofError> {
+pub fn run<M: Memory>(setup: &Setup<Ready<M>>) -> Result<RecursiveSNARK<E1>, FrontendError> {
   if std::any::type_name::<M>() == std::any::type_name::<ROM>() {
     // Safety: We've verified the type matches ROM
     let setup = unsafe {
@@ -111,7 +111,7 @@ pub fn run<M: Memory>(setup: &Setup<Ready<M>>) -> Result<RecursiveSNARK<E1>, Pro
   }
 }
 
-pub fn run_rom(setup: &Setup<Ready<ROM>>) -> Result<RecursiveSNARK<E1>, ProofError> {
+pub fn run_rom(setup: &Setup<Ready<ROM>>) -> Result<RecursiveSNARK<E1>, FrontendError> {
   info!("Starting SuperNova program...");
 
   let z0_primary = &setup.switchboard.public_input;
@@ -136,7 +136,7 @@ pub fn run_rom(setup: &Setup<Ready<ROM>>) -> Result<RecursiveSNARK<E1>, ProofErr
         // Check if higher bytes are non-zero (which would be truncated in usize conversion)
         let usize_size = std::mem::size_of::<usize>();
         if pc_bytes[usize_size..].iter().any(|&b| b != 0) {
-          return Err(ProofError::Other("Program counter value too large for usize".into()));
+          return Err(FrontendError::Other("Program counter value too large for usize".into()));
         }
 
         // Convert the relevant bytes to usize (using little-endian order)
@@ -182,7 +182,7 @@ pub fn run_rom(setup: &Setup<Ready<ROM>>) -> Result<RecursiveSNARK<E1>, ProofErr
   Ok(recursive_snark.unwrap())
 }
 
-pub fn run_ram(setup: &Setup<Ready<RAM>>) -> Result<RecursiveSNARK<E1>, ProofError> {
+pub fn run_ram(setup: &Setup<Ready<RAM>>) -> Result<RecursiveSNARK<E1>, FrontendError> {
   info!("Starting SuperNova program...");
 
   let z0_primary = &setup.switchboard.public_input;
@@ -211,7 +211,7 @@ pub fn run_ram(setup: &Setup<Ready<RAM>>) -> Result<RecursiveSNARK<E1>, ProofErr
         // Check if higher bytes are non-zero (which would be truncated in usize conversion)
         let usize_size = std::mem::size_of::<usize>();
         if pc_bytes[usize_size..].iter().any(|&b| b != 0) {
-          return Err(ProofError::Other("Program counter value too large for usize".into()));
+          return Err(FrontendError::Other("Program counter value too large for usize".into()));
         }
 
         // Convert the relevant bytes to usize (using little-endian order)
@@ -263,7 +263,7 @@ pub fn run_ram(setup: &Setup<Ready<RAM>>) -> Result<RecursiveSNARK<E1>, ProofErr
 pub fn compress<M: Memory>(
   setup: &Setup<Ready<M>>,
   recursive_snark: &RecursiveSNARK<E1>,
-) -> Result<CompressedProof, ProofError> {
+) -> Result<CompressedProof, FrontendError> {
   let pk = CompressedSNARK::<E1, S1, S2>::initialize_pk(
     &setup.params,
     setup.vk_digest_primary,

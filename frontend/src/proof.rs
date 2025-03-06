@@ -35,7 +35,7 @@ impl CompressedProof {
   /// # Returns
   ///
   /// A `FoldingProof` with a `Vec<u8>` proof and a `String` verifier digest.
-  pub fn serialize(self) -> Result<FoldingProof<Vec<u8>, String>, ProofError> {
+  pub fn serialize(self) -> Result<FoldingProof<Vec<u8>, String>, FrontendError> {
     let proof = bincode::serialize(&self.proof)?;
 
     Ok(FoldingProof { proof, verifier_digest: hex::encode(self.verifier_digest.to_bytes()) })
@@ -49,7 +49,7 @@ impl FoldingProof<Vec<u8>, String> {
   /// # Returns
   ///
   /// A `FoldingProof` with a `CompressedSNARK<E1, S1, S2>` proof and a `F<G1>` verifier digest.
-  pub fn deserialize(self) -> Result<CompressedProof, ProofError> {
+  pub fn deserialize(self) -> Result<CompressedProof, FrontendError> {
     let proof = bincode::deserialize(&self.proof[..])?;
 
     Ok(FoldingProof {

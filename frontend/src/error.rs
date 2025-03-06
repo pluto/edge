@@ -1,27 +1,7 @@
-//! Error type for the `proofs` crate.
-//!
-//! This enum represents the various error conditions that can occur within the
-//! `proofs` crate. It provides a unified way to handle and propagate errors
-//! throughout the crate.
-//!
-//! The possible error variants include:
-//!
-//! - `Synthesis`: Represents an error that occurred during the synthesis process.
-//! - `Io`: Represents an I/O error.
-//! - `Serde`: Represents a serialization or deserialization error.
-//! - `Other`: Represents any other error with a custom error message.
-//! - `VerifyFailed`: Indicates that the proof verification failed.
-//! - `Parse`: Represents an error that occurred while parsing a big integer.
-//! - `WitnessCalc`: Represents an error that occurred during witness calculation (only available
-//!   when not targeting `wasm32`).
-//! - `MissingSection`: Indicates that a required section is missing.
-//! - `Bincode`: Represents a Bincode serialization or deserialization error.
 use thiserror::Error;
 
-/// Represents the various error conditions that can occur within the `proofs`
-/// crate.
 #[derive(Debug, Error)]
-pub enum ProofError {
+pub enum FrontendError {
   /// The error is a `bellpepper_core::SynthesisError`
   #[error(transparent)]
   Synthesis(#[from] bellpepper_core::SynthesisError),

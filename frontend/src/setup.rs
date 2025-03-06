@@ -8,7 +8,7 @@ use client_side_prover::{
 use tracing::debug;
 
 use crate::{
-  error::ProofError,
+  error::FrontendError,
   program::{Memory, Switchboard},
   AuxParams, E1, S1, S2,
 };
@@ -88,7 +88,7 @@ impl<M: Memory> Setup<Ready<M>> {
     }
   }
 
-  pub fn store_file(self, path: &std::path::PathBuf) -> Result<Vec<u8>, ProofError> {
+  pub fn store_file(self, path: &std::path::PathBuf) -> Result<Vec<u8>, FrontendError> {
     let bytes = self.into_empty().to_bytes();
     if let Some(parent) = path.parent() {
       std::fs::create_dir_all(parent)?;
