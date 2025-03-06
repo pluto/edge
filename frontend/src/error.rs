@@ -1,5 +1,16 @@
+//! # Error Handling
+//!
+//! This module defines the error types used throughout the crate.
+//! `FrontendError` is the primary error type that encapsulates various
+//! lower-level errors that might occur during proof generation, verification,
+//! and other operations.
+
 use thiserror::Error;
 
+/// Represents errors that can occur in the frontend operations of the NIVC system.
+///
+/// This enum encapsulates various error types from dependent libraries as well as
+/// custom error conditions specific to this crate.
 #[derive(Debug, Error)]
 pub enum FrontendError {
   /// The error is a `bellpepper_core::SynthesisError`
