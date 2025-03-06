@@ -27,7 +27,7 @@ fn test_ivc() {
     vec![Scalar::from(2), Scalar::from(1)],
     0,
   );
-  let setup = Setup::new(switchboard);
+  let setup = Setup::new(switchboard).unwrap();
   let snark = run(&setup).unwrap();
   dbg!(&snark.zi_primary());
   assert_eq!(snark.zi_primary()[0], Scalar::from(256));
@@ -66,7 +66,7 @@ fn test_ivc_private_inputs() {
     vec![Scalar::from(1), Scalar::from(2)],
     0,
   );
-  let setup = Setup::new(switchboard);
+  let setup = Setup::new(switchboard).unwrap();
   let snark = run(&setup).unwrap();
   let zi = snark.zi_primary();
   dbg!(zi);
@@ -101,7 +101,7 @@ fn test_nivc() {
     vec![Scalar::from(1), Scalar::from(2)],
     0,
   );
-  let setup = Setup::new(switchboard);
+  let setup = Setup::new(switchboard).unwrap();
   let snark = run(&setup).unwrap();
   let zi = snark.zi_primary();
   dbg!(zi);
@@ -132,7 +132,7 @@ fn test_ivc_verify() {
     vec![Scalar::from(2), Scalar::from(1)],
     0,
   );
-  let setup = Setup::new(switchboard);
+  let setup = Setup::new(switchboard).unwrap();
   let snark = run(&setup).unwrap();
   let (z1_primary, z1_secondary) =
     snark.verify(&setup.params, &snark.z0_primary(), &snark.z0_secondary()).unwrap();
@@ -157,7 +157,7 @@ fn test_ivc_compression() {
     vec![Scalar::from(2), Scalar::from(1)],
     0,
   );
-  let setup = Setup::new(switchboard);
+  let setup = Setup::new(switchboard).unwrap();
   let snark = run(&setup).unwrap();
   let compressed_proof = compress(&setup, &snark).unwrap();
 
@@ -177,7 +177,7 @@ fn test_ivc_verify_basic() {
     ("external_add".to_string(), InputValue::Field(GenericFieldElement::from(10_u64))),
   ])];
   let switchboard = Switchboard::<ROM>::new(programs, switchboard_inputs, vec![Scalar::from(2)], 0);
-  let setup = Setup::new(switchboard);
+  let setup = Setup::new(switchboard).unwrap();
   let snark = run(&setup).unwrap();
   let (z1_primary, z1_secondary) =
     snark.verify(&setup.params, &snark.z0_primary(), &snark.z0_secondary()).unwrap();
@@ -196,7 +196,7 @@ fn test_ivc_compression_basic() {
     ("external_add".to_string(), InputValue::Field(GenericFieldElement::from(10_u64))),
   ])];
   let switchboard = Switchboard::<ROM>::new(programs, switchboard_inputs, vec![Scalar::from(2)], 0);
-  let setup = Setup::new(switchboard);
+  let setup = Setup::new(switchboard).unwrap();
   let snark = run(&setup).unwrap();
   let compressed_proof = compress(&setup, &snark).unwrap();
   let (_, vk) = CompressedSNARK::setup(&setup.params).unwrap();
@@ -217,7 +217,7 @@ fn test_ivc_verify_poseidon() {
     vec![Scalar::from(2), Scalar::from(1)],
     0,
   );
-  let setup = Setup::new(switchboard);
+  let setup = Setup::new(switchboard).unwrap();
   let snark = run(&setup).unwrap();
   let (z1_primary, z1_secondary) =
     snark.verify(&setup.params, &snark.z0_primary(), &snark.z0_secondary()).unwrap();
@@ -236,7 +236,7 @@ fn test_ivc_compression_poseidon() {
     vec![Scalar::from(2), Scalar::from(1)],
     0,
   );
-  let setup = Setup::new(switchboard);
+  let setup = Setup::new(switchboard).unwrap();
   let snark = run(&setup).unwrap();
   let compressed_proof = compress(&setup, &snark).unwrap();
 
@@ -258,7 +258,7 @@ fn test_collatz() {
     vec![Scalar::from(collatz_start)],
     initial_circuit_index as usize,
   );
-  let setup = Setup::new(switchboard);
+  let setup = Setup::new(switchboard).unwrap();
   let snark = run(&setup).unwrap();
   let (z1_primary, z1_secondary) =
     snark.verify(&setup.params, &snark.z0_primary(), &snark.z0_secondary()).unwrap();

@@ -1,3 +1,16 @@
+//! # Noir Program Integration
+//!
+//! This module provides the integration between Noir programs and the NIVC system.
+//! It handles the translation of Noir's ACIR (Abstract Circuit Intermediate Representation)
+//! into constraints that can be used in the folding proof system. This allows Noir programs
+//! to be used as circuit components in Non-uniform Incrementally Verifiable Computation.
+//!
+//! ## Key Components
+//!
+//! - `NoirProgram`: Represents a compiled Noir program with its bytecode and ABI
+//! - `StepCircuit` implementation: Allows Noir programs to be used in the `SuperNova` NIVC system
+//! - Field conversion functions: Convert between ACIR field representation and proof system fields
+
 use std::collections::{BTreeMap, HashMap};
 
 use acvm::{
@@ -11,60 +24,86 @@ use acvm::{
   AcirField,
 };
 use ark_bn254::Fr;
-use bellpepper_core::{
-  num::AllocatedNum, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable,
-};
+use bellpepper_core::{num::AllocatedNum, ConstraintSystem, LinearCombination, SynthesisError};
 use client_side_prover::supernova::StepCircuit;
 use ff::PrimeField;
 use noirc_abi::{input_parser::InputValue, Abi, AbiType, InputMap};
-use tracing::{debug, error, info, trace, warn};
+use tracing::{error, trace};
 
 use super::*;
 
-// TODO: If we deserialize more here and get metadata, we could more easily look at witnesses, etc.
-// Especially if we want to output a constraint to the PC. Using the abi would be handy for
-// assigning inputs.
+/// Represents a compiled Noir program ready for execution in the NIVC system
+///
+/// A `NoirProgram` contains the compiled bytecode of a Noir program along with its ABI
+/// (Application Binary Interface) which describes the program's inputs and outputs.
+/// It can be used as a circuit component in the `SuperNova` NIVC system.
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct NoirProgram {
-  #[serde(rename = "noir_version")]
-  pub version:       String,
-  pub hash:          u64,
-  pub abi:           Abi,
+  /// The program's ABI describing its inputs and outputs
+  pub abi: Abi,
+
+  /// The program's bytecode in ACIR format, serialized as base64
   #[serde(
     serialize_with = "Program::serialize_program_base64",
     deserialize_with = "Program::deserialize_program_base64"
   )]
-  pub bytecode:      Program<GenericFieldElement<Fr>>,
-  // TODO: We likely don't need these.
-  pub debug_symbols: serde_json::Value,
-  // TODO: We likely don't need these.
-  pub file_map:      serde_json::Value,
+  pub bytecode: Program<GenericFieldElement<Fr>>,
 
-  pub names:         Vec<String>,
-  pub brillig_names: Vec<String>,
+  /// Optional witness inputs for the program (is used internally by the [`program::run`] function)
   #[serde(skip)]
-  pub witness:       Option<InputMap>,
+  pub witness: Option<InputMap>,
+
+  /// The index of this program in the switchboard's circuit list
   #[serde(skip)]
-  pub index:         usize,
+  pub index: usize,
 }
 
 impl NoirProgram {
+  /// Creates a new `NoirProgram` from JSON bytecode
+  ///
+  /// # Arguments
+  ///
+  /// * `bin` - The JSON bytecode of a compiled Noir program
+  ///
+  /// # Returns
+  ///
+  /// A new `NoirProgram` instance
   pub fn new(bin: &[u8]) -> Self { serde_json::from_slice(bin).unwrap() }
 
+  /// Gets the main circuit from the program
+  ///
+  /// # Returns
+  ///
+  /// A reference to the main circuit function
   pub fn circuit(&self) -> &Circuit<GenericFieldElement<Fr>> { &self.bytecode.functions[0] }
 
+  /// Gets the unconstrained functions from the program
+  ///
+  /// Unconstrained functions are functions that are executed during witness generation
+  /// but do not contribute to the circuit's constraints. These are handled by the
+  /// [`StubbedBlackBoxSolver`].
+  ///
+  /// # Returns
+  ///
+  /// A reference to the list of unconstrained functions
   pub fn unconstrained_functions(&self) -> &Vec<BrilligBytecode<GenericFieldElement<Fr>>> {
     &self.bytecode.unconstrained_functions
   }
 
-  pub fn set_inputs(&mut self, switchboard_witness: InputMap) {
-    self.witness = Some(switchboard_witness);
-  }
+  /// Sets the witness inputs for the program
+  ///
+  /// # Arguments
+  ///
+  /// * `witness` - The input map containing witness values
+  pub fn set_inputs(&mut self, witness: InputMap) { self.witness = Some(witness); }
 }
 
 impl StepCircuit<Scalar> for NoirProgram {
+  /// Returns the number of registers in the folding state
+  ///
+  /// This is determined by examining the ABI to find the "registers" array
+  /// in the `FoldingVariables` struct.
   fn arity(&self) -> usize {
-    // Find input type with FoldingVariables type (regardless of parameter name)
     let input_type = self
       .abi
       .parameters
@@ -78,10 +117,8 @@ impl StepCircuit<Scalar> for NoirProgram {
       })
       .map(|param| &param.typ);
 
-    // Get the return type
     let return_type = self.abi.return_type.as_ref().map(|ret| &ret.abi_type);
 
-    // Extract register length from a FoldingVariables struct
     let get_register_length = |typ: &AbiType| -> usize {
       if let AbiType::Struct { fields, .. } = typ {
         if let Some((_, AbiType::Array { length, .. })) =
@@ -96,10 +133,8 @@ impl StepCircuit<Scalar> for NoirProgram {
       }
     };
 
-    // Check types and extract register length
     match (input_type, return_type) {
       (Some(input), Some(output)) => {
-        // Check that both are FoldingVariables
         if let (AbiType::Struct { path: in_path, .. }, AbiType::Struct { path: out_path, .. }) =
           (input, output)
         {
@@ -107,12 +142,10 @@ impl StepCircuit<Scalar> for NoirProgram {
             let in_len = get_register_length(input);
             let out_len = get_register_length(output);
 
-            if in_len != out_len {
-              panic!(
-                "Input and output must have same number of registers: {} vs {}",
-                in_len, out_len
-              );
-            }
+            assert!(
+              in_len == out_len,
+              "Input and output must have same number of registers: {in_len} vs {out_len}",
+            );
 
             return in_len;
           }
@@ -123,8 +156,25 @@ impl StepCircuit<Scalar> for NoirProgram {
     }
   }
 
+  /// Returns the index of this circuit in the switchboard
   fn circuit_index(&self) -> usize { self.index }
 
+  /// Synthesizes the Noir program into a constraint system
+  ///
+  /// This is the core method that translates the Noir program's ACIR representation
+  /// into constraints that can be used in the folding proof system. It processes
+  /// each gate in the ACIR circuit and creates corresponding constraints in the
+  /// target constraint system.
+  ///
+  /// # Arguments
+  ///
+  /// * `cs` - The constraint system to add constraints to
+  /// * `pc` - The program counter (next circuit to execute)
+  /// * `z` - The current folding state (register values)
+  ///
+  /// # Returns
+  ///
+  /// A tuple of the next program counter and updated register values
   #[allow(clippy::too_many_lines)]
   fn synthesize<CS: ConstraintSystem<Scalar>>(
     &self,
@@ -145,10 +195,8 @@ impl StepCircuit<Scalar> for NoirProgram {
         &[],
       );
 
-      // Prepare inputs with registers
       // TODO: Can we remove this clone since it may be a lot of data?
       let mut inputs_with_folding_variables = inputs.clone();
-      // Create folding variables
       let folding_variables = InputValue::Struct(BTreeMap::from([
         (
           "registers".to_string(),
@@ -176,7 +224,7 @@ impl StepCircuit<Scalar> for NoirProgram {
       }
 
       // Solve and get resulting witness map
-      trace!("Executing ACVM solve...");
+      debug!("Executing ACVM solve...");
       acvm.solve();
       acvm.finalize()
     });
@@ -217,16 +265,16 @@ impl StepCircuit<Scalar> for NoirProgram {
 
         // Handle mul terms by creating intermediate variables for each product
         for mul_term in &gate.mul_terms {
-          let left_var = get_var(&mul_term.1, &mut allocated_vars, cs)?;
-          let right_var = get_var(&mul_term.2, &mut allocated_vars, cs)?;
+          let left_variable = get_var(&mul_term.1, &mut allocated_vars, cs)?;
+          let right_variable = get_var(&mul_term.2, &mut allocated_vars, cs)?;
 
           // Get the values if available
-          let left_val = acvm_witness_map
+          let left_value = acvm_witness_map
             .as_ref()
             .and_then(|map| map.get(&mul_term.1))
             .map(|&v| convert_to_halo2_field(v));
 
-          let right_val = acvm_witness_map
+          let right_value = acvm_witness_map
             .as_ref()
             .and_then(|map| map.get(&mul_term.2))
             .map(|&v| convert_to_halo2_field(v));
@@ -235,8 +283,8 @@ impl StepCircuit<Scalar> for NoirProgram {
           let product = AllocatedNum::alloc(
             cs.namespace(|| format!("prod_g{idx}_t{}", mul_term.1.as_usize())),
             || {
-              let l = left_val.unwrap_or_else(Scalar::zero);
-              let r = right_val.unwrap_or_else(Scalar::zero);
+              let l = left_value.unwrap_or_else(Scalar::zero);
+              let r = right_value.unwrap_or_else(Scalar::zero);
               Ok(l * r)
             },
           )?;
@@ -244,8 +292,8 @@ impl StepCircuit<Scalar> for NoirProgram {
           // Enforce that this is indeed the product
           cs.enforce(
             || format!("prod_constraint_g{idx}_t{}", mul_term.1.as_usize()),
-            |lc| lc + left_var,
-            |lc| lc + right_var,
+            |lc| lc + left_variable,
+            |lc| lc + right_variable,
             |lc| lc + product.get_variable(),
           );
 
@@ -297,11 +345,6 @@ impl StepCircuit<Scalar> for NoirProgram {
     if let Some(noirc_abi::AbiReturnType { abi_type: AbiType::Struct { fields, .. }, .. }) =
       &self.abi.return_type
     {
-      // Print debug information
-      trace!("Return type fields: {:?}", fields.iter().map(|(name, _)| name).collect::<Vec<_>>());
-      trace!("Return values length: {}", return_values.len());
-
-      // Check if we have the expected FoldingVariables structure
       let registers_field = fields
         .iter()
         .find(|(name, _)| name == "registers")
@@ -312,38 +355,34 @@ impl StepCircuit<Scalar> for NoirProgram {
         _ => panic!("Expected registers to be an array type"),
       };
 
-      trace!("Registers length from ABI: {}", registers_length);
-
-      // Find the index of the program_counter in the return values
-      let pc_index = fields
-        .iter()
-        .position(|(name, _)| name == "program_counter")
-        .unwrap_or_else(|| panic!("Missing 'program_counter' field"));
-
-      trace!("Program counter index: {}", pc_index);
-
-      // The Noir ABI returns fields in order, so we can directly map them to return_values
-      // First n values are the registers, followed by program_counter
-      if return_values.len() >= registers_length + 1 {
+      if return_values.len() > registers_length {
         let registers = return_values[0..registers_length].to_vec();
         let next_pc = Some(return_values[registers_length].clone());
 
         trace!("Extracted {} registers and program counter", registers.len());
         return Ok((next_pc, registers));
-      } else {
-        error!(
-          "Not enough return values. Expected at least {}, got {}",
-          registers_length + 1,
-          return_values.len()
-        );
-        return Err(SynthesisError::Unsatisfiable);
       }
+      error!(
+        "Not enough return values. Expected at least {}, got {}",
+        registers_length + 1,
+        return_values.len()
+      );
+      return Err(SynthesisError::Unsatisfiable);
     }
 
     Err(SynthesisError::Unsatisfiable)
   }
 }
 
+/// Converts a field element from ACIR representation to Halo2 representation
+///
+/// # Arguments
+///
+/// * `f` - The field element in ACIR representation
+///
+/// # Returns
+///
+/// The field element in Halo2 representation
 fn convert_to_halo2_field(f: GenericFieldElement<Fr>) -> Scalar {
   let bytes = f.to_be_bytes();
   let mut arr = [0u8; 32];
@@ -352,6 +391,15 @@ fn convert_to_halo2_field(f: GenericFieldElement<Fr>) -> Scalar {
   Scalar::from_repr(arr).unwrap()
 }
 
+/// Converts a field element from Halo2 representation to ACIR representation
+///
+/// # Arguments
+///
+/// * `f` - The field element in Halo2 representation
+///
+/// # Returns
+///
+/// The field element in ACIR representation
 fn convert_to_acir_field(f: Scalar) -> GenericFieldElement<Fr> {
   let mut bytes = f.to_bytes();
   bytes.reverse();

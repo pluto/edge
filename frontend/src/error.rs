@@ -73,4 +73,8 @@ pub enum FrontendError {
   /// The error is an invalid hex string
   #[error(transparent)]
   FromHex(#[from] hex::FromHexError),
+
+  /// The error is a [`client_side_prover::fast_serde::SerdeByteError`]
+  #[error(transparent)]
+  FastSerde(#[from] client_side_prover::fast_serde::SerdeByteError),
 }
