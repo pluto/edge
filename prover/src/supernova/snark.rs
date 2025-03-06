@@ -185,10 +185,9 @@ where
     z0_primary: &[E1::Scalar],
     z0_secondary: &[<Dual<E1> as Engine>::Scalar],
   ) -> Result<(Vec<E1::Scalar>, Vec<<Dual<E1> as Engine>::Scalar>), SuperNovaError> {
-    let last_circuit_idx = field_as_usize(self.program_counter);
-
+    // Assumes that each circuit has the same arity, so we just use the first one'
     let num_field_primary_ro = 3 // params_next, i_new, program_counter_new
-    + 2 * pp[last_circuit_idx].F_arity // zo, z1
+    + 2 * pp[0].F_arity // zo, z1
     + (7 + 2 * pp.augmented_circuit_params_primary.get_n_limbs()); // # 1 * (7 + [X0, X1]*#num_limb)
 
     // secondary circuit
