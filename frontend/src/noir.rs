@@ -186,6 +186,7 @@ impl StepCircuit<Scalar> for NoirProgram {
 
     // Create variable tracker and initialize ACVM
     let mut allocated_vars: HashMap<Witness, AllocatedNum<Scalar>> = HashMap::new();
+
     let acvm_witness_map = self.witness.as_ref().map(|inputs| {
       let mut acvm = ACVM::new(
         &StubbedBlackBoxSolver(false),

@@ -233,6 +233,7 @@ pub fn run_rom(setup: &Setup<Ready<ROM>>) -> Result<RecursiveSNARK<E1>, Frontend
   for (idx, witness) in setup.switchboard.switchboard_inputs.iter().enumerate() {
     info!("Step {} of {} witnesses", idx + 1, setup.switchboard.switchboard_inputs.len());
 
+    // TODO: We should not clone the witness here
     recursive_snark =
       prove_single_step(setup, recursive_snark, Some(witness.clone()), z0_primary, z0_secondary)?;
   }

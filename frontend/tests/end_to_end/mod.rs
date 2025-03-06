@@ -1,5 +1,6 @@
 use std::fs;
 
+use acvm::acir::acir_field::GenericFieldElement;
 use client_side_prover_frontend::{
   demo,
   program::{self, Switchboard, ROM},
@@ -7,7 +8,7 @@ use client_side_prover_frontend::{
   setup::{Empty, Ready, Setup},
   Scalar,
 };
-use noirc_abi::InputMap;
+use noirc_abi::{input_parser::InputValue, InputMap};
 use tempfile::tempdir;
 
 use super::*;
@@ -45,9 +46,15 @@ fn test_end_to_end_workflow() {
   println!("5. Read setup from file");
 
   // Step 6: Ready the setup for proving with the switchboard
+  let input1 =
+    InputMap::from([("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(1_u64)))]);
+  let input2 = InputMap::from([(
+    "next_pc".to_string(),
+    InputValue::Field(GenericFieldElement::from(-1_i128)),
+  )]);
   let switchboard = Switchboard::<ROM>::new(
     vec![swap_memory_program, square_program],
-    vec![InputMap::new(), InputMap::new()],
+    vec![input1, input2],
     vec![Scalar::from(3), Scalar::from(5)],
     0,
   );
@@ -81,9 +88,8 @@ fn test_end_to_end_workflow() {
   // Step 12: Convert back to compressed proof
   let compressed_proof_from_file = deserialized_proof.deserialize().unwrap();
   println!("12. Converted back to compressed proof");
-  // Step 15: Verify the proof
-  // Note: Verification would normally involve checking the proof against the verifier key
-  // from the setup, but I'll use a simplified check that the digests match
+
+  // Step 13: Verify the proof digests match
   //   assert_eq!(
   //     compressed_proof.verifier_digest, compressed_proof_from_file.verifier_digest,
   //     "Verifier digests don't match after serialization/deserialization"
