@@ -96,12 +96,9 @@ fn test_end_to_end_workflow() {
   let vsetup = Setup::<Empty<ROM>>::load_file(&file_path).unwrap();
   let vsetup = vsetup.into_ready(switchboard);
   let vk = vsetup.verifier_key().unwrap();
-  deserialized_proof.verify(
-    &vsetup.params,
-    &vk,
-    recursive_snark.z0_primary(),
-    recursive_snark.z0_secondary(),
-  );
+  deserialized_proof
+    .verify(&vsetup.params, &vk, recursive_snark.z0_primary(), recursive_snark.z0_secondary())
+    .unwrap();
   println!("11. Verified the proof");
   // ----------------------------------------------------------------------------------------------------------------- //
 }

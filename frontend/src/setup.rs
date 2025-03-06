@@ -183,6 +183,13 @@ impl<M: Memory> Setup<Ready<M>> {
     Ok(bytes)
   }
 
+  /// Returns the verifier key for the setup
+  ///
+  /// This method generates the verifier key for the setup using the public parameters.
+  ///
+  /// # Returns
+  ///
+  /// The verifier key for the setup
   pub fn verifier_key(&self) -> Result<VerifierKey, FrontendError> {
     let (_, vk) = CompressedSNARK::setup(&self.params)?;
     Ok(vk)

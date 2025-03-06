@@ -1,6 +1,5 @@
 //! This module defines a final compressing SNARK for supernova proofs
 
-use ff::PrimeField;
 use serde::{Deserialize, Serialize};
 
 use super::{error::SuperNovaError, PublicParams, RecursiveSNARK};
@@ -268,10 +267,6 @@ where
 
     Ok((self.zn_primary.clone(), self.zn_secondary.clone()))
   }
-}
-
-fn field_as_usize<F: PrimeField>(x: F) -> usize {
-  u32::from_le_bytes(x.to_repr().as_ref()[0..4].try_into().unwrap()) as usize
 }
 
 #[cfg(test)]

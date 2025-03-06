@@ -24,7 +24,7 @@
 //! - [`compress`]: Compresses a recursive SNARK into a more compact form for verification
 
 use client_side_prover::supernova::{NonUniformCircuit, RecursiveSNARK};
-use halo2curves::grumpkin;
+use halo2curves::{ff::PrimeField, grumpkin};
 use noirc_abi::InputMap;
 use tracing::trace;
 
@@ -297,23 +297,9 @@ fn prove_single_step<M: Memory>(
 ) -> Result<Option<RecursiveSNARK<E1>>, FrontendError> {
   let program_counter = match &recursive_snark {
     None => setup.switchboard.initial_circuit_index(),
-    Some(snark) => {
-      let pc_bytes = snark.program_counter().to_bytes();
-      let usize_size = std::mem::size_of::<usize>();
-
-      // Check if higher bytes are non-zero
-      if pc_bytes[usize_size..].iter().any(|&b| b != 0) {
-        return Err(FrontendError::Other("Program counter value too large for usize".into()));
-      }
-
-      // Convert to usize (little-endian)
-      let mut pc_value = 0usize;
-      for (i, &b) in pc_bytes.iter().take(usize_size).enumerate() {
-        pc_value |= (b as usize) << (i * 8);
-      }
-
-      pc_value
-    },
+    Some(snark) =>
+      u32::from_le_bytes(snark.program_counter().to_repr().as_ref()[0..4].try_into().unwrap())
+        as usize,
   };
 
   debug!("Program counter = {:?}", program_counter);
