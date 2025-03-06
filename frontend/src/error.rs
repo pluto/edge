@@ -69,4 +69,8 @@ pub enum FrontendError {
   /// The error is an invalid manifest
   #[error("Invalid manifest: {0}")]
   InvalidManifest(String),
+
+  /// The error is an invalid hex string
+  #[error(transparent)]
+  FromHex(#[from] hex::FromHexError),
 }

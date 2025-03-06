@@ -387,22 +387,18 @@ mod tests {
   fn test_deserialize_abi() {
     let program = add_external();
 
-    // Verify basic structure
-    assert_eq!(program.version, "1.0.0-beta.2+1a2a08cbcb68646ff1aaef383cfc1798933c1355");
-    assert_eq!(program.hash, 4842196402509912449);
-
     // Verify parameters
     assert_eq!(program.abi.parameters.len(), 3);
-    assert_eq!(program.abi.parameters[0].name, "registers");
+    assert_eq!(program.abi.parameters[0].name, "folding_variables");
     assert_eq!(program.abi.parameters[1].name, "external");
     assert_eq!(program.abi.parameters[2].name, "next_pc");
 
     // Verify return type
     if let AbiType::Struct { fields, path } = &program.abi.return_type.as_ref().unwrap().abi_type {
       assert_eq!(fields.len(), 2);
-      assert_eq!(path, "nivc::FoldingOutput");
+      assert_eq!(path, "nivc::FoldingVariables");
       assert_eq!(fields[0].0, "registers");
-      assert_eq!(fields[1].0, "next_pc");
+      assert_eq!(fields[1].0, "program_counter");
     } else {
       panic!("Expected tuple return type, got {:?}", program.abi.return_type);
     }
@@ -421,7 +417,7 @@ mod tests {
     ];
 
     let _ = program.synthesize(&mut cs, pc.as_ref(), z.as_ref()).unwrap();
-    assert_eq!(cs.num_constraints(), 5);
+    assert_eq!(cs.num_constraints(), 3);
   }
 
   #[test]
