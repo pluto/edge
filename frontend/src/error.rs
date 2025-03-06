@@ -22,15 +22,15 @@ use thiserror::Error;
 /// crate.
 #[derive(Debug, Error)]
 pub enum ProofError {
-  /// The error is a bellpepper_core::SynthesisError
+  /// The error is a `bellpepper_core::SynthesisError`
   #[error(transparent)]
   Synthesis(#[from] bellpepper_core::SynthesisError),
 
-  /// The error is a std::io::Error
+  /// The error is a `std::io::Error`
   #[error(transparent)]
   Io(#[from] std::io::Error),
 
-  /// The error is a serde_json::Error
+  /// The error is a `serde_json::Error`
   #[error(transparent)]
   Serde(#[from] serde_json::Error),
 
@@ -42,7 +42,7 @@ pub enum ProofError {
   #[error("Failed to verify proof: {0}")]
   VerifyFailed(String),
 
-  /// The error is a num_bigint::ParseBigIntError
+  /// The error is a `num_bigint::ParseBigIntError`
   #[error(transparent)]
   Parse(#[from] num_bigint::ParseBigIntError),
 
@@ -50,15 +50,15 @@ pub enum ProofError {
   #[error("Missing header section")]
   MissingSection,
 
-  /// The error is a bincode::ErrorKind
+  /// The error is a `bincode::ErrorKind`
   #[error(transparent)]
   Bincode(#[from] Box<bincode::ErrorKind>),
 
-  /// The error is a client_side_prover::errors::NovaError
+  /// The error is a `client_side_prover::errors::NovaError`
   #[error(transparent)]
   Nova(#[from] client_side_prover::errors::NovaError),
 
-  /// The error is a client_side_prover::supernova::error::SuperNovaError
+  /// The error is a `client_side_prover::supernova::error::SuperNovaError`
   #[error(transparent)]
   SuperNova(#[from] client_side_prover::supernova::error::SuperNovaError),
 

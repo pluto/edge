@@ -363,7 +363,7 @@ mod tests {
   use client_side_prover::bellpepper::shape_cs::ShapeCS;
 
   use super::*;
-  use crate::demo::{basic, http, poseidon, square_zeroth};
+  use crate::demo::{basic, poseidon, square_zeroth};
 
   fn add_external() -> NoirProgram {
     let json_path = "../target/add_external.json";

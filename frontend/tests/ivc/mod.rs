@@ -255,12 +255,9 @@ fn test_collatz() {
   let initial_circuit_index = collatz_start % 2;
   let switchboard = Switchboard::<RAM>::new(
     programs,
-    (),
     vec![Scalar::from(collatz_start)],
     initial_circuit_index as usize,
   );
-  // let switchboard =
-  //   Switchboard::<ROM>::new(programs, vec![InputMap::new()], vec![Scalar::from(2)], 0);
   let setup = Setup::new(switchboard);
   let snark = run(&setup).unwrap();
   let (z1_primary, z1_secondary) =

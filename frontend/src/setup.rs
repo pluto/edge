@@ -9,15 +9,20 @@ use tracing::debug;
 
 use crate::{
   error::ProofError,
-  noir::NoirProgram,
-  program::{self, Memory, Switchboard},
+  program::{Memory, Switchboard},
   AuxParams, E1, S1, S2,
 };
 
-// TODO: Seal this
-pub trait Status {
+pub trait Status: private::Sealed {
   type Switchboard;
   type PublicParams;
+}
+
+mod private {
+  use super::{Empty, Ready};
+  pub trait Sealed {}
+  impl<M: crate::program::Memory> Sealed for Ready<M> {}
+  impl<M: crate::program::Memory> Sealed for Empty<M> {}
 }
 
 #[derive(Debug, Clone)]
@@ -149,26 +154,26 @@ impl<M: Memory> FastSerde for Setup<Empty<M>> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::demo::square_zeroth;
+  use crate::{demo::square_zeroth, program::RAM};
 
   #[test]
   fn test_setup_and_params() {
-    let setup = Setup::new(Switchboard::new(vec![square_zeroth()], vec![], vec![], 0));
+    let setup = Setup::new(Switchboard::<RAM>::new(vec![square_zeroth()], vec![], 0));
     assert_eq!(setup.params.num_constraints_and_variables(0), (10009, 10001));
   }
 
   #[test]
   fn test_setup_serialize() {
-    let setup = Setup::new(Switchboard::new(vec![square_zeroth()], vec![], vec![], 0));
+    let setup = Setup::new(Switchboard::<RAM>::new(vec![square_zeroth()], vec![], 0));
     let empty_setup = setup.into_empty();
     let serialized = empty_setup.to_bytes();
-    let deserialized = Setup::<Empty>::from_bytes(&serialized).unwrap();
+    let deserialized = Setup::<Empty<RAM>>::from_bytes(&serialized).unwrap();
     assert_eq!(empty_setup, deserialized);
   }
 
   #[test]
   fn test_setup_store_file() {
-    let switchboard = Switchboard::new(vec![square_zeroth()], vec![], vec![], 0);
+    let switchboard = Switchboard::<RAM>::new(vec![square_zeroth()], vec![], 0);
     let setup = Setup::new(switchboard.clone());
     let vk_digest_primary = setup.vk_digest_primary;
     let vk_digest_secondary = setup.vk_digest_secondary;
@@ -176,7 +181,7 @@ mod tests {
     let bytes = setup.store_file(&path.join("setup.bytes")).unwrap();
     assert!(!bytes.is_empty());
     let stored_bytes = std::fs::read(path.join("setup.bytes")).unwrap();
-    let deserialized = Setup::<Empty>::from_bytes(&stored_bytes).unwrap();
+    let deserialized = Setup::<Empty<RAM>>::from_bytes(&stored_bytes).unwrap();
     let ready_setup = deserialized.into_ready(switchboard);
     assert_eq!(vk_digest_primary, ready_setup.vk_digest_primary);
     assert_eq!(vk_digest_secondary, ready_setup.vk_digest_secondary);

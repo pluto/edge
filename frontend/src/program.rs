@@ -1,7 +1,4 @@
-use client_side_prover::{
-  supernova::{NonUniformCircuit, RecursiveSNARK},
-  traits::snark::{default_ck_hint, BatchedRelaxedR1CSSNARKTrait},
-};
+use client_side_prover::supernova::{NonUniformCircuit, RecursiveSNARK};
 use halo2curves::grumpkin;
 use noirc_abi::InputMap;
 use proof::FoldingProof;
@@ -19,8 +16,15 @@ use crate::{
 /// Compressed proof type
 pub type CompressedProof = FoldingProof<CompressedSNARK<E1, S1, S2>, Scalar>;
 
-pub trait Memory {
+pub trait Memory: private::Sealed {
   type Data;
+}
+
+mod private {
+  use super::{RAM, ROM};
+  pub trait Sealed {}
+  impl Sealed for ROM {}
+  impl Sealed for RAM {}
 }
 
 #[derive(Debug, Clone)]
@@ -45,10 +49,10 @@ pub struct Switchboard<M: Memory> {
   pub(crate) switchboard_inputs:    M::Data,
 }
 
-impl<M: Memory> Switchboard<M> {
+impl Switchboard<ROM> {
   pub fn new(
     mut circuits: Vec<NoirProgram>,
-    switchboard_inputs: M::Data,
+    switchboard_inputs: Vec<InputMap>,
     public_input: Vec<Scalar>,
     initial_circuit_index: usize,
   ) -> Self {
@@ -56,6 +60,19 @@ impl<M: Memory> Switchboard<M> {
     // serde
     circuits.iter_mut().enumerate().for_each(|(i, c)| c.index = i);
     Self { circuits, public_input, initial_circuit_index, switchboard_inputs }
+  }
+}
+
+impl Switchboard<RAM> {
+  pub fn new(
+    mut circuits: Vec<NoirProgram>,
+    public_input: Vec<Scalar>,
+    initial_circuit_index: usize,
+  ) -> Self {
+    // Set the index of each circuit given the order they are passed in since this is skipped in
+    // serde
+    circuits.iter_mut().enumerate().for_each(|(i, c)| c.index = i);
+    Self { circuits, public_input, initial_circuit_index, switchboard_inputs: () }
   }
 }
 
@@ -72,6 +89,26 @@ impl<M: Memory> NonUniformCircuit<E1> for Switchboard<M> {
   fn secondary_circuit(&self) -> Self::C2 { TrivialCircuit::default() }
 
   fn initial_circuit_index(&self) -> usize { self.initial_circuit_index }
+}
+
+pub fn run<M: Memory>(setup: &Setup<Ready<M>>) -> Result<RecursiveSNARK<E1>, ProofError> {
+  if std::any::type_name::<M>() == std::any::type_name::<ROM>() {
+    // Safety: We've verified the type matches ROM
+    let setup = unsafe {
+      &*std::ptr::from_ref::<setup::Setup<setup::Ready<M>>>(setup)
+        .cast::<setup::Setup<setup::Ready<program::ROM>>>()
+    };
+    run_rom(setup)
+  } else if std::any::type_name::<M>() == std::any::type_name::<RAM>() {
+    // Safety: We've verified the type matches RAM
+    let setup = unsafe {
+      &*std::ptr::from_ref::<setup::Setup<setup::Ready<M>>>(setup)
+        .cast::<setup::Setup<setup::Ready<program::RAM>>>()
+    };
+    run_ram(setup)
+  } else {
+    unreachable!("The trait `Memory` is sealed, so you cannot reach this point")
+  }
 }
 
 pub fn run_rom(setup: &Setup<Ready<ROM>>) -> Result<RecursiveSNARK<E1>, ProofError> {
@@ -137,11 +174,6 @@ pub fn run_rom(setup: &Setup<Ready<ROM>>) -> Result<RecursiveSNARK<E1>, ProofErr
     let snark = recursive_snark.as_mut().unwrap();
     snark.prove_step(&setup.params, &circuit_primary, &circuit_secondary)?;
     info!("Done proving single step...");
-
-    // TODO: Feature gate this or just remove it
-    // info!("Verifying single step...");
-    // snark.verify(&public_params, snark.z0_primary(), z0_secondary)?;
-    // info!("Single step verification done");
   }
 
   trace!("Recursive loop of `program::run()` elapsed: {:?}", time.elapsed());
@@ -226,20 +258,6 @@ pub fn run_ram(setup: &Setup<Ready<RAM>>) -> Result<RecursiveSNARK<E1>, ProofErr
 
   // Return the completed recursive SNARK
   Ok(recursive_snark.unwrap())
-}
-
-pub fn run<M: Memory>(setup: &Setup<Ready<M>>) -> Result<RecursiveSNARK<E1>, ProofError> {
-  if std::any::type_name::<M>() == std::any::type_name::<ROM>() {
-    // Safety: We've verified the type matches ROM
-    let setup = unsafe { std::mem::transmute::<&Setup<Ready<M>>, &Setup<Ready<ROM>>>(setup) };
-    run_rom(setup)
-  } else if std::any::type_name::<M>() == std::any::type_name::<RAM>() {
-    // Safety: We've verified the type matches RAM
-    let setup = unsafe { std::mem::transmute::<&Setup<Ready<M>>, &Setup<Ready<RAM>>>(setup) };
-    run_ram(setup)
-  } else {
-    Err(ProofError::Other("Unsupported memory type".into()))
-  }
 }
 
 pub fn compress<M: Memory>(
