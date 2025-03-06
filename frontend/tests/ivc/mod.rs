@@ -162,10 +162,7 @@ fn test_ivc_compression() {
   let compressed_proof = compress(&setup, &snark).unwrap();
 
   let (_, vk) = CompressedSNARK::setup(&setup.params).unwrap();
-  compressed_proof
-    .proof
-    .verify(&setup.params, &vk, &snark.z0_primary(), &snark.z0_secondary())
-    .unwrap();
+  compressed_proof.verify(&setup.params, &vk, &snark.z0_primary(), &snark.z0_secondary()).unwrap();
 }
 
 #[test]
@@ -200,10 +197,7 @@ fn test_ivc_compression_basic() {
   let snark = run(&setup).unwrap();
   let compressed_proof = compress(&setup, &snark).unwrap();
   let (_, vk) = CompressedSNARK::setup(&setup.params).unwrap();
-  compressed_proof
-    .proof
-    .verify(&setup.params, &vk, &snark.z0_primary(), &snark.z0_secondary())
-    .unwrap();
+  compressed_proof.verify(&setup.params, &vk, &snark.z0_primary(), &snark.z0_secondary()).unwrap();
 }
 
 #[test]
@@ -241,10 +235,7 @@ fn test_ivc_compression_poseidon() {
   let compressed_proof = compress(&setup, &snark).unwrap();
 
   let (_, vk) = CompressedSNARK::setup(&setup.params).unwrap();
-  compressed_proof
-    .proof
-    .verify(&setup.params, &vk, &snark.z0_primary(), &snark.z0_secondary())
-    .unwrap();
+  compressed_proof.verify(&setup.params, &vk, &snark.z0_primary(), &snark.z0_secondary()).unwrap();
 }
 
 #[test]
@@ -269,8 +260,5 @@ fn test_collatz() {
 
   let compressed_proof = compress(&setup, &snark).unwrap();
   let (_, vk) = CompressedSNARK::setup(&setup.params).unwrap();
-  compressed_proof
-    .proof
-    .verify(&setup.params, &vk, &snark.z0_primary(), &snark.z0_secondary())
-    .unwrap();
+  compressed_proof.verify(&setup.params, &vk, &snark.z0_primary(), &snark.z0_secondary()).unwrap();
 }

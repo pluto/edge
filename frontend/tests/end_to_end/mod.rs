@@ -1,22 +1,25 @@
 use std::fs;
 
 use acvm::acir::acir_field::GenericFieldElement;
-use client_side_prover::supernova::snark::CompressedSNARK;
 use client_side_prover_frontend::{
   demo,
   program::{self, Switchboard, ROM},
-  proof::FoldingProof,
   setup::{Empty, Ready, Setup},
-  Scalar,
+  CompressedSNARK, Scalar,
 };
 use noirc_abi::{input_parser::InputValue, InputMap};
 use tempfile::tempdir;
 
 use super::*;
 
+/// Note that this test goes through a flow that mimics the offline setup component, online proving
+/// component, and a separate verification component.
 #[test]
 #[traced_test]
 fn test_end_to_end_workflow() {
+  // ----------------------------------------------------------------------------------------------------------------- //
+  // Offline Setup Phase
+  // ----------------------------------------------------------------------------------------------------------------- //
   // Step 1: Create demo programs for our test
   let swap_memory_program = demo::swap_memory();
   let square_program = demo::square_zeroth();
@@ -41,7 +44,11 @@ fn test_end_to_end_workflow() {
   let file_path = temp_dir.path().join("test_setup.bytes");
   setup.store_file(&file_path).unwrap();
   println!("4. Saved setup to file");
+  // ----------------------------------------------------------------------------------------------------------------- //
 
+  // ----------------------------------------------------------------------------------------------------------------- //
+  // Online Proving Phase
+  // ----------------------------------------------------------------------------------------------------------------- //
   // Step 5: Read the setup from the file
   let setup = Setup::<Empty<ROM>>::load_file(&file_path).unwrap();
   println!("5. Read setup from file");
@@ -49,8 +56,10 @@ fn test_end_to_end_workflow() {
   // Step 6: Ready the setup for proving with the switchboard
   let input1 =
     InputMap::from([("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(1_u64)))]);
-  let input2 =
-    InputMap::from([("next_pc".to_string(), InputValue::Field(GenericFieldElement::from(1_i128)))]);
+  let input2 = InputMap::from([(
+    "next_pc".to_string(),
+    InputValue::Field(GenericFieldElement::from(-1_i128)),
+  )]);
   let switchboard = Switchboard::<ROM>::new(
     vec![swap_memory_program, square_program],
     vec![input1, input2],
@@ -68,35 +77,31 @@ fn test_end_to_end_workflow() {
   let compressed_proof = program::compress(&setup, &recursive_snark).unwrap();
   println!("8. Compressed the proof");
 
-  // Step 9: Serialize the proof
-  let serialized_proof = compressed_proof.serialize().unwrap();
-  println!("9. Serialized the proof");
-
-  // Step 10: Save the serialized proof to a file
+  // Step 9: Serialize and store the proof in a file
+  let serialized_proof = bincode::serialize(&compressed_proof).unwrap();
   let proof_file_path = temp_dir.path().join("test_proof.bytes");
-  let proof_bytes = bincode::serialize(&serialized_proof).unwrap();
-  fs::write(&proof_file_path, &proof_bytes).unwrap();
-  println!("10. Saved the serialized proof to a file");
+  fs::write(&proof_file_path, &serialized_proof).unwrap();
+  println!("9. Saved the serialized proof to a file");
+  // ----------------------------------------------------------------------------------------------------------------- //
 
-  // Step 11: Read and deserialize the proof
+  // ----------------------------------------------------------------------------------------------------------------- //
+  // Separate Verification Phase
+  // ----------------------------------------------------------------------------------------------------------------- //
+  // Step 10: Read and deserialize the proof
   let proof_bytes_from_file = fs::read(&proof_file_path).unwrap();
-  let deserialized_proof: FoldingProof<Vec<u8>, String> =
-    bincode::deserialize(&proof_bytes_from_file).unwrap();
-  println!("11. Read and deserialized the proof");
+  let deserialized_proof: CompressedSNARK = bincode::deserialize(&proof_bytes_from_file).unwrap();
+  println!("10. Read and deserialized the proof");
 
-  // Step 12: Convert back to compressed proof
-  let compressed_proof_from_file = deserialized_proof.deserialize().unwrap();
-  println!("12. Converted back to compressed proof");
-
-  // TODO: Set up a verifier from file
-  // Step 13: Verify the proof digests match
+  // Step 11: Verify the proof digests match by loading the setup from file as if we were a verifier
   let vsetup = Setup::<Empty<ROM>>::load_file(&file_path).unwrap();
   let vsetup = vsetup.into_ready(switchboard);
-  let (_pk, vk) = CompressedSNARK::setup(&vsetup.params).unwrap();
-  compressed_proof_from_file.proof.verify(
+  let vk = vsetup.verifier_key().unwrap();
+  deserialized_proof.verify(
     &vsetup.params,
     &vk,
     recursive_snark.z0_primary(),
     recursive_snark.z0_secondary(),
   );
+  println!("11. Verified the proof");
+  // ----------------------------------------------------------------------------------------------------------------- //
 }

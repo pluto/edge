@@ -28,11 +28,8 @@ use client_side_prover::{
 };
 use tracing::debug;
 
-use crate::{
-  error::FrontendError,
-  program::{Memory, Switchboard},
-  AuxParams, E1, S1, S2,
-};
+use super::*;
+use crate::program::{Memory, Switchboard};
 
 /// Trait that defines the status of a setup
 ///
@@ -118,6 +115,8 @@ impl<S: Status> PartialEq for Setup<S> {
   }
 }
 
+// TODO: Possibly have a `get_vk` method that returns the verification key for the given setup
+
 impl<M: Memory> Setup<Ready<M>> {
   /// Creates a new ready setup with the given switchboard
   ///
@@ -182,6 +181,11 @@ impl<M: Memory> Setup<Ready<M>> {
     std::io::Write::write_all(&mut std::fs::File::create(path)?, &bytes)?;
 
     Ok(bytes)
+  }
+
+  pub fn verifier_key(&self) -> Result<VerifierKey, FrontendError> {
+    let (_, vk) = CompressedSNARK::setup(&self.params)?;
+    Ok(vk)
   }
 }
 

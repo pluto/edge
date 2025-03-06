@@ -35,7 +35,7 @@
 use client_side_prover::{
   provider::GrumpkinEngine,
   spartan::batched::BatchedRelaxedR1CSSNARK,
-  supernova::{snark::CompressedSNARK, TrivialCircuit},
+  supernova::TrivialCircuit,
   traits::{Engine, Group},
 };
 use ff::Field;
@@ -47,7 +47,6 @@ use crate::error::FrontendError;
 pub mod error;
 pub mod noir;
 pub mod program;
-pub mod proof;
 pub mod setup;
 
 /// Represents the scalar field for the primary curve (bn254)
@@ -70,6 +69,9 @@ pub type ProverKey = client_side_prover::supernova::snark::ProverKey<E1, S1, S2>
 ///
 /// This key is used by the verifier to validate cryptographic proofs.  
 pub type VerifierKey = client_side_prover::supernova::snark::VerifierKey<E1, S1, S2>;
+
+/// Represents the `CompressedSNARK` which is a succinct proof of a `RecursiveSNARK`.
+pub type CompressedSNARK = client_side_prover::supernova::snark::CompressedSNARK<E1, S1, S2>;
 
 /// Represents the first elliptic curve engine used in the proof system.
 ///

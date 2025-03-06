@@ -26,7 +26,6 @@
 use client_side_prover::supernova::{NonUniformCircuit, RecursiveSNARK};
 use halo2curves::grumpkin;
 use noirc_abi::InputMap;
-use proof::FoldingProof;
 use tracing::trace;
 
 use super::*;
@@ -34,11 +33,6 @@ use crate::{
   noir::NoirProgram,
   setup::{Ready, Setup},
 };
-
-/// Compressed proof type representing a folding proof with associated verifier digest
-///
-/// This proof can be serialized for transmission or storage and later verified.
-pub type CompressedProof = FoldingProof<CompressedSNARK<E1, S1, S2>, Scalar>;
 
 /// Trait for memory models used in the NIVC system
 ///
@@ -372,22 +366,20 @@ fn prove_single_step<M: Memory>(
 pub fn compress<M: Memory>(
   setup: &Setup<Ready<M>>,
   recursive_snark: &RecursiveSNARK<E1>,
-) -> Result<CompressedProof, FrontendError> {
-  let pk = CompressedSNARK::<E1, S1, S2>::initialize_pk(
+) -> Result<CompressedSNARK, FrontendError> {
+  let pk = CompressedSNARK::initialize_pk(
     &setup.params,
     setup.vk_digest_primary,
     setup.vk_digest_secondary,
   )?;
-  debug!(
+  trace!(
     "initialized pk pk_primary.digest={:?}, pk_secondary.digest={:?}",
-    pk.pk_primary.vk_digest, pk.pk_secondary.vk_digest
+    pk.pk_primary.vk_digest,
+    pk.pk_secondary.vk_digest
   );
 
   debug!("`CompressedSNARK::prove STARTING PROVING!");
-  let proof = FoldingProof {
-    proof:           CompressedSNARK::<E1, S1, S2>::prove(&setup.params, &pk, recursive_snark)?,
-    verifier_digest: pk.pk_primary.vk_digest,
-  };
+  let proof = CompressedSNARK::prove(&setup.params, &pk, recursive_snark)?;
   debug!("`CompressedSNARK::prove completed!");
 
   Ok(proof)
