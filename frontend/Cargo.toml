@@ -1,16 +1,16 @@
 [package]
-name   ="client-side-prover-frontend"
+name   ="edge-frontend"
 version="0.1.0"
 edition="2021"
 
 [dependencies]
-client-side-prover={ path="../prover" }
-serde             ={ workspace=true }
-serde_json        ={ workspace=true }
-thiserror         ={ workspace=true }
-tracing           ={ workspace=true }
-bellpepper-core   ={ workspace=true }
-halo2curves       ={ workspace=true }
+edge-prover    ={ path="../prover" }
+serde          ={ workspace=true }
+serde_json     ={ workspace=true }
+thiserror      ={ workspace=true }
+tracing        ={ workspace=true }
+bellpepper-core={ workspace=true }
+halo2curves    ={ workspace=true }
 
 # noir
 acvm     ={ git="https://github.com/noir-lang/noir", rev="v1.0.0-beta.2" }
@@ -18,11 +18,11 @@ noirc_abi={ git="https://github.com/noir-lang/noir", rev="v1.0.0-beta.2" }
 ark-bn254="0.5"
 
 [dev-dependencies]
-tracing-test               ={ workspace=true }
-tempdir                    ="0.3.7"
-client-side-prover-frontend={ path=".", features=["demo"] }
-tempfile                   ="3.17"
-bincode                    ={ workspace=true }
+tracing-test ={ workspace=true }
+tempdir      ="0.3.7"
+edge-frontend={ path=".", features=["demo"] }
+tempfile     ="3.17"
+bincode      ={ workspace=true }
 
 [features]
 demo=[]

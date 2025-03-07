@@ -23,7 +23,7 @@
 //! - [`run`]: Executes a program with the appropriate memory model
 //! - [`compress`]: Compresses a recursive SNARK into a more compact form for verification
 
-use client_side_prover::supernova::{NonUniformCircuit, RecursiveSNARK};
+use edge_prover::supernova::{NonUniformCircuit, RecursiveSNARK, TrivialCircuit};
 use halo2curves::{ff::PrimeField, grumpkin};
 use noirc_abi::InputMap;
 use tracing::trace;
@@ -120,6 +120,17 @@ impl Switchboard<Configuration> {
     Self { circuits, public_input: vec![], initial_circuit_index: 0, switchboard_inputs: () }
   }
 
+  /// Converts a Configuration switchboard into a ROM-mode switchboard
+  ///
+  /// # Arguments
+  ///
+  /// * `initial_circuit_index` - The starting circuit index
+  /// * `switchboard_inputs` - Sequence of inputs for each execution step
+  /// * `public_input` - Initial register values
+  ///
+  /// # Returns
+  ///
+  /// A new [`Switchboard`] instance configured for ROM execution
   pub fn into_rom(
     self,
     initial_circuit_index: usize,
@@ -129,6 +140,16 @@ impl Switchboard<Configuration> {
     Switchboard { circuits: self.circuits, public_input, initial_circuit_index, switchboard_inputs }
   }
 
+  /// Converts a Configuration switchboard into a RAM-mode switchboard
+  ///
+  /// # Arguments
+  ///
+  /// * `initial_circuit_index` - The starting circuit index
+  /// * `public_input` - Initial register values
+  ///
+  /// # Returns
+  ///
+  /// A new [`Switchboard`] instance configured for RAM execution
   pub fn into_ram(
     self,
     initial_circuit_index: usize,

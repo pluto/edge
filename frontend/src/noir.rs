@@ -25,7 +25,7 @@ use acvm::{
 };
 use ark_bn254::Fr;
 use bellpepper_core::{num::AllocatedNum, ConstraintSystem, LinearCombination, SynthesisError};
-use client_side_prover::supernova::StepCircuit;
+use edge_prover::supernova::StepCircuit;
 use halo2curves::ff::PrimeField;
 use noirc_abi::{input_parser::InputValue, Abi, AbiType, InputMap};
 use tracing::{error, trace};
@@ -409,7 +409,7 @@ fn convert_to_acir_field(f: Scalar) -> GenericFieldElement<Fr> {
 
 #[cfg(test)]
 mod tests {
-  use client_side_prover::bellpepper::shape_cs::ShapeCS;
+  use edge_prover::bellpepper::shape_cs::ShapeCS;
 
   use super::*;
   use crate::demo::{basic, poseidon, square_zeroth};

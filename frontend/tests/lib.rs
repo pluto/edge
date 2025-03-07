@@ -1,4 +1,4 @@
-use client_side_prover_frontend::demo::*;
+use edge_frontend::demo::*;
 use tracing_test::traced_test;
 
 mod end_to_end;
