@@ -45,11 +45,12 @@ pub trait Memory: private::Sealed {
 
 /// Private module containing implementation details for sealing the Memory trait
 mod private {
-  use super::{RAM, ROM};
+  use super::{Configuration, RAM, ROM};
   /// Seals the [`Memory`] trait
   pub trait Sealed {}
   impl Sealed for ROM {}
   impl Sealed for RAM {}
+  impl Sealed for Configuration {}
 }
 
 /// Read-Only Memory model
@@ -74,6 +75,16 @@ impl Memory for RAM {
   type Data = ();
 }
 
+/// A memory model that doesn't require any additional input data.
+///
+/// This is just a placeholder to allow the setup to be easily created then serialized and
+/// deserialized.
+#[derive(Debug, Clone)]
+pub struct Configuration {}
+impl Memory for Configuration {
+  type Data = ();
+}
+
 /// Manages a collection of circuits and controls execution flow
 ///
 /// The switchboard holds all the circuits that can be executed in a NIVC computation,
@@ -92,6 +103,44 @@ pub struct Switchboard<M: Memory> {
 
   /// Input data specific to the memory model
   pub(crate) switchboard_inputs: M::Data,
+}
+
+impl Switchboard<Configuration> {
+  /// Creates a new switchboard with Blank memory model
+  ///
+  /// # Arguments
+  ///
+  /// * `circuits` - Collection of Noir circuits that can be executed
+  ///
+  /// # Returns
+  pub fn new(mut circuits: Vec<NoirProgram>) -> Self {
+    // Set the index of each circuit given the order they are passed in since this is skipped in
+    // serde
+    circuits.iter_mut().enumerate().for_each(|(i, c)| c.index = i);
+    Self { circuits, public_input: vec![], initial_circuit_index: 0, switchboard_inputs: () }
+  }
+
+  pub fn into_rom(
+    self,
+    initial_circuit_index: usize,
+    switchboard_inputs: Vec<InputMap>,
+    public_input: Vec<Scalar>,
+  ) -> Switchboard<ROM> {
+    Switchboard { circuits: self.circuits, public_input, initial_circuit_index, switchboard_inputs }
+  }
+
+  pub fn into_ram(
+    self,
+    initial_circuit_index: usize,
+    public_input: Vec<Scalar>,
+  ) -> Switchboard<RAM> {
+    Switchboard {
+      circuits: self.circuits,
+      public_input,
+      initial_circuit_index,
+      switchboard_inputs: self.switchboard_inputs,
+    }
+  }
 }
 
 impl Switchboard<ROM> {

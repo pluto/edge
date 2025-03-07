@@ -3,8 +3,8 @@ use std::fs;
 use acvm::acir::acir_field::GenericFieldElement;
 use client_side_prover_frontend::{
   demo,
-  program::{self, Switchboard, ROM},
-  setup::{Empty, Ready, Setup},
+  program::{self, Configuration, Switchboard},
+  setup::Setup,
   CompressedSNARK, Scalar,
 };
 use noirc_abi::{input_parser::InputValue, InputMap};
@@ -27,16 +27,12 @@ fn test_end_to_end_workflow() {
 
   // Step 2: Create switchboard with ROM memory model, no inputs are necessary since this is just
   // creating the setup
-  let switchboard = Switchboard::<ROM>::new(
-    vec![swap_memory_program.clone(), square_program.clone()],
-    vec![],
-    vec![],
-    0,
-  );
+  let switchboard =
+    Switchboard::<Configuration>::new(vec![swap_memory_program.clone(), square_program.clone()]);
   println!("2. Created switchboard");
 
   // Step 3: Initialize the setup
-  let setup = Setup::<Ready<ROM>>::new(switchboard).unwrap();
+  let setup = Setup::new(switchboard.clone()).unwrap();
   println!("3. Initialized setup");
 
   // Step 4: Save the setup to a file
@@ -50,7 +46,7 @@ fn test_end_to_end_workflow() {
   // Online Proving Phase
   // ----------------------------------------------------------------------------------------------------------------- //
   // Step 5: Read the setup from the file
-  let setup = Setup::<Empty<ROM>>::load_file(&file_path).unwrap();
+  let psetup = Setup::load_file(&file_path).unwrap();
   println!("5. Read setup from file");
 
   // Step 6: Ready the setup for proving with the switchboard
@@ -60,21 +56,18 @@ fn test_end_to_end_workflow() {
     "next_pc".to_string(),
     InputValue::Field(GenericFieldElement::from(-1_i128)),
   )]);
-  let switchboard = Switchboard::<ROM>::new(
-    vec![swap_memory_program, square_program],
-    vec![input1, input2],
-    vec![Scalar::from(3), Scalar::from(5)],
-    0,
-  );
-  let setup = setup.into_ready(switchboard.clone());
+  // Briefly test the switchboard into_rom method
+  let pswitchboard =
+    switchboard.into_rom(0, vec![input1, input2], vec![Scalar::from(3), Scalar::from(5)]);
+  let psetup = psetup.into_ready(pswitchboard);
   println!("6. Ready the setup for proving with the switchboard");
 
   // Step 7: Run a proof
-  let recursive_snark = program::run(&setup).unwrap();
+  let recursive_snark = program::run(&psetup).unwrap();
   println!("7. Run a proof");
 
   // Step 8: Compress the proof
-  let compressed_proof = program::compress(&setup, &recursive_snark).unwrap();
+  let compressed_proof = program::compress(&psetup, &recursive_snark).unwrap();
   println!("8. Compressed the proof");
 
   // Step 9: Serialize and store the proof in a file
@@ -93,8 +86,9 @@ fn test_end_to_end_workflow() {
   println!("10. Read and deserialized the proof");
 
   // Step 11: Verify the proof digests match by loading the setup from file as if we were a verifier
-  let vsetup = Setup::<Empty<ROM>>::load_file(&file_path).unwrap();
-  let vsetup = vsetup.into_ready(switchboard);
+  let vsetup = Setup::load_file(&file_path).unwrap();
+  let vswitchboard = Switchboard::<Configuration>::new(vec![swap_memory_program, square_program]);
+  let vsetup = vsetup.into_ready(vswitchboard);
   let vk = vsetup.verifier_key().unwrap();
   deserialized_proof
     .verify(&vsetup.params, &vk, recursive_snark.z0_primary(), recursive_snark.z0_secondary())

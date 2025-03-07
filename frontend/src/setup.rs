@@ -10,7 +10,7 @@
 //! ## Setup States
 //!
 //! The setup can be in one of two states:
-//! - **Empty**: Contains only auxiliary parameters without a switchboard (can be serialized for
+//! - **Offline**: Contains only auxiliary parameters without a switchboard (can be serialized for
 //!   storage)
 //! - **Ready**: Complete setup with a switchboard that's ready for program execution
 //!
@@ -35,7 +35,7 @@ use crate::program::{Memory, Switchboard};
 ///
 /// This sealed trait can only be implemented by the predefined status types:
 /// - `Ready<M>`: A setup that is ready for execution with a specific memory model
-/// - `Empty<M>`: A setup that only contains cryptographic parameters without a switchboard
+/// - `Offline<M>`: A setup that only contains cryptographic parameters without a switchboard
 pub trait Status: private::Sealed {
   /// The switchboard type associated with this status
   type Switchboard;
@@ -46,12 +46,12 @@ pub trait Status: private::Sealed {
 
 /// Private module for sealing the Status trait
 mod private {
-  use super::{Empty, Ready};
+  use super::{Offline, Ready};
 
   /// Sealed trait implementation to restrict Status implementations
   pub trait Sealed {}
   impl<M: crate::program::Memory> Sealed for Ready<M> {}
-  impl<M: crate::program::Memory> Sealed for Empty<M> {}
+  impl Sealed for Offline {}
 }
 
 /// Represents a setup that is ready for execution with a specific memory model
@@ -73,18 +73,15 @@ impl<M: Memory> Status for Ready<M> {
 
 /// Represents a setup that only contains cryptographic parameters without a switchboard
 ///
-/// An `Empty` setup can be serialized and stored, making it useful for saving
+/// An `Offline` setup can be serialized and stored, making it useful for saving
 /// computationally expensive cryptographic parameters.
 #[derive(Debug, Clone)]
-pub struct Empty<M: Memory> {
-  /// Marker for the memory model type
-  _marker: std::marker::PhantomData<M>,
-}
+pub struct Offline;
 
-impl<M: Memory> Status for Empty<M> {
-  /// An empty setup only contains auxiliary parameters
+impl Status for Offline {
+  /// An offline setup only contains auxiliary parameters
   type PublicParams = AuxParams;
-  /// An empty setup doesn't have a switchboard
+  /// An offline setup doesn't have a switchboard
   type Switchboard = ();
 }
 
@@ -103,7 +100,7 @@ pub struct Setup<S: Status> {
   /// Secondary verification key digest
   pub vk_digest_secondary: <Dual<E1> as Engine>::Scalar,
 
-  /// Switchboard (if the setup is [`Ready`]) or unit (if [`Empty`])
+  /// Switchboard (if the setup is [`Ready`]) or unit (if [`Offline`])
   pub switchboard: S::Switchboard,
 }
 
@@ -142,15 +139,15 @@ impl<M: Memory> Setup<Ready<M>> {
     })
   }
 
-  /// Converts a ready setup to an empty setup
+  /// Converts a ready setup to an offline setup
   ///
   /// This extracts the auxiliary parameters from the public parameters and
-  /// creates an empty setup without the switchboard, which can be serialized.
+  /// creates an offline setup without the switchboard, which can be serialized.
   ///
   /// # Returns
   ///
-  /// An empty setup containing only the auxiliary parameters
-  fn into_empty(self) -> Setup<Empty<M>> {
+  /// An offline setup containing only the auxiliary parameters
+  fn into_offline(self) -> Setup<Offline> {
     Setup {
       params:              self.params.into_parts().1,
       vk_digest_primary:   self.vk_digest_primary,
@@ -161,7 +158,7 @@ impl<M: Memory> Setup<Ready<M>> {
 
   /// Serializes the setup and stores it to a file
   ///
-  /// This converts the setup to an empty setup, serializes it, and writes
+  /// This converts the setup to an offline setup, serializes it, and writes
   /// the resulting bytes to the specified file path.
   ///
   /// # Arguments
@@ -172,7 +169,7 @@ impl<M: Memory> Setup<Ready<M>> {
   ///
   /// The serialized bytes on success, or a `FrontendError` on failure
   pub fn store_file(self, path: &std::path::PathBuf) -> Result<Vec<u8>, FrontendError> {
-    let bytes = self.into_empty().to_bytes();
+    let bytes = self.into_offline().to_bytes();
     if let Some(parent) = path.parent() {
       std::fs::create_dir_all(parent)?;
     }
@@ -196,8 +193,8 @@ impl<M: Memory> Setup<Ready<M>> {
   }
 }
 
-impl<M: Memory> Setup<Empty<M>> {
-  /// Converts an empty setup to a ready setup
+impl Setup<Offline> {
+  /// Converts an offline setup to a ready setup
   ///
   /// This combines the auxiliary parameters with a switchboard to create
   /// a ready setup that can be used to execute programs.
@@ -209,7 +206,7 @@ impl<M: Memory> Setup<Empty<M>> {
   /// # Returns
   ///
   /// A ready setup containing the parameters and switchboard
-  pub fn into_ready(self, switchboard: Switchboard<M>) -> Setup<Ready<M>> {
+  pub fn into_ready<M: Memory>(self, switchboard: Switchboard<M>) -> Setup<Ready<M>> {
     Setup {
       params: PublicParams::from_parts(get_circuit_shapes(&switchboard), self.params),
       vk_digest_primary: self.vk_digest_primary,
@@ -234,7 +231,7 @@ impl<M: Memory> Setup<Empty<M>> {
 }
 
 // TODO: We should consider using `rkyv` for serialization and deserialization
-impl<M: Memory> FastSerde for Setup<Empty<M>> {
+impl FastSerde for Setup<Offline> {
   /// Deserializes a setup from bytes
   ///
   /// # Arguments
@@ -243,7 +240,7 @@ impl<M: Memory> FastSerde for Setup<Empty<M>> {
   ///
   /// # Returns
   ///
-  /// The deserialized empty setup, or a `SerdeByteError` on failure
+  /// The deserialized offline setup, or a `SerdeByteError` on failure
   fn from_bytes(bytes: &[u8]) -> Result<Self, SerdeByteError> {
     let mut cursor = Cursor::new(bytes);
     Self::validate_header(&mut cursor, SerdeByteTypes::ProverParams, 3)?;
@@ -288,34 +285,33 @@ impl<M: Memory> FastSerde for Setup<Empty<M>> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::{demo::square_zeroth, program::RAM};
+  use crate::{demo::square_zeroth, program::Configuration};
 
   #[test]
   fn test_setup_and_params() {
-    let setup = Setup::new(Switchboard::<RAM>::new(vec![square_zeroth()], vec![], 0)).unwrap();
+    let setup = Setup::new(Switchboard::<Configuration>::new(vec![square_zeroth()])).unwrap();
     assert_eq!(setup.params.num_constraints_and_variables(0), (10009, 10001));
   }
 
   #[test]
   fn test_setup_serialize() {
-    let setup = Setup::new(Switchboard::<RAM>::new(vec![square_zeroth()], vec![], 0)).unwrap();
-    let empty_setup = setup.into_empty();
-    let serialized = empty_setup.to_bytes();
-    let deserialized = Setup::<Empty<RAM>>::from_bytes(&serialized).unwrap();
-    assert_eq!(empty_setup, deserialized);
+    let setup = Setup::new(Switchboard::<Configuration>::new(vec![square_zeroth()])).unwrap();
+    let offline_setup = setup.into_offline();
+    let serialized = offline_setup.to_bytes();
+    let deserialized = Setup::<Offline>::from_bytes(&serialized).unwrap();
+    assert_eq!(offline_setup, deserialized);
   }
 
   #[test]
   fn test_setup_store_file() {
-    let switchboard = Switchboard::<RAM>::new(vec![square_zeroth()], vec![], 0);
+    let switchboard = Switchboard::<Configuration>::new(vec![square_zeroth()]);
     let setup = Setup::new(switchboard.clone()).unwrap();
     let vk_digest_primary = setup.vk_digest_primary;
     let vk_digest_secondary = setup.vk_digest_secondary;
     let path = tempfile::tempdir().unwrap().into_path();
-    let bytes = setup.store_file(&path.join("setup.bytes")).unwrap();
-    assert!(!bytes.is_empty());
+    let _bytes = setup.store_file(&path.join("setup.bytes")).unwrap();
     let stored_bytes = std::fs::read(path.join("setup.bytes")).unwrap();
-    let deserialized = Setup::<Empty<RAM>>::from_bytes(&stored_bytes).unwrap();
+    let deserialized = Setup::<Offline>::from_bytes(&stored_bytes).unwrap();
     let ready_setup = deserialized.into_ready(switchboard);
     assert_eq!(vk_digest_primary, ready_setup.vk_digest_primary);
     assert_eq!(vk_digest_secondary, ready_setup.vk_digest_secondary);
