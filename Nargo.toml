@@ -1,0 +1,11 @@
+[workspace]
+members=[
+  "nivc",
+  "examples/add_external",
+  "examples/square_zeroth",
+  "examples/swap_memory",
+  "examples/poseidon",
+  "examples/basic",
+  "examples/collatz_even",
+  "examples/collatz_odd",
+]

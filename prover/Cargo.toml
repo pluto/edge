@@ -1,0 +1,79 @@
+[package]
+name        ="client-side-prover"
+version     ="0.1.0"
+authors     =["Pluto Engineering"]
+edition     ="2021"
+description ="Client side proving"
+readme      ="README.md"
+repository  ="https://github.com/pluto/client-side-prover"
+license-file="LICENSE"
+keywords    =["zkSNARKs", "cryptography", "proofs"]
+
+[dependencies]
+bellpepper-core  ={ workspace=true }
+bellpepper       ={ workspace=true }
+ff               ={ workspace=true }
+digest           ={ workspace=true }
+halo2curves      ={ workspace=true }
+sha3             ={ workspace=true }
+rayon            ={ workspace=true }
+rand_core        ={ workspace=true }
+rand_chacha      ={ workspace=true }
+subtle           ={ workspace=true }
+neptune          ={ workspace=true }
+generic-array    ={ workspace=true }
+num-bigint       ={ workspace=true }
+num-traits       ={ workspace=true }
+num-integer      ={ workspace=true }
+serde            ={ workspace=true }
+bincode          ={ workspace=true }
+bitvec           ={ workspace=true }
+byteorder        ={ workspace=true }
+thiserror        ={ workspace=true }
+group            ={ workspace=true }
+pairing          ={ workspace=true }
+tracing          ={ workspace=true }
+cfg-if           ={ workspace=true }
+once_cell        ={ workspace=true }
+itertools        ={ workspace=true }
+rand             ={ workspace=true }
+ref-cast         ={ workspace=true }
+static_assertions={ workspace=true }
+rayon-scan       ={ workspace=true }
+
+[target.'cfg(any(target_arch = "x86_64", target_arch = "aarch64"))'.dependencies]
+# grumpkin-msm has been patched to support MSMs for the pasta curve cycle
+# see: https://github.com/argumentcomputer/grumpkin-msm/pull/3
+grumpkin-msm={ workspace=true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom={ workspace=true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+proptest={ workspace=true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+criterion={ version="0.5", features=["html_reports"] }
+
+[dev-dependencies]
+flate2            ={ workspace=true }
+hex               ={ workspace=true }
+sha2              ={ workspace=true }
+tracing-test      ={ workspace=true }
+expect-test       ={ workspace=true }
+anyhow            ={ workspace=true }
+tap               ={ workspace=true }
+tracing-texray    ={ workspace=true }
+tracing-subscriber={ workspace=true }
+handlebars        ={ workspace=true }
+serde_json        ={ workspace=true }
+
+# [build-dependencies]
+# vergen = { workspace = true }
+
+[features]
+default=["grumpkin-msm/portable"]
+# asm = ["halo2curves/asm"]
+# Compiles in portable mode, w/o ISA extensions => binary can be executed on all systems.
+# portable = ["grumpkin-msm/portable"]
+# cuda = ["grumpkin-msm/cuda"]

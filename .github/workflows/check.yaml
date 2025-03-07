@@ -1,0 +1,74 @@
+name: Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Nargo
+        uses: noir-lang/noirup@v0.1.3
+        with:
+          toolchain: v1.0.0-beta.2
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+      - name: Run tests
+        run: |
+          nargo compile --workspace
+          cargo test --all
+
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+          components: rustfmt
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Install taplo
+        uses: taiki-e/install-action@cargo-binstall
+      - name: Install tools
+        run: cargo binstall --no-confirm taplo-cli
+      - name: Check TOML formatting
+        run: taplo fmt --check
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+          components: clippy
+      - name: Run clippy
+        run: cargo clippy --all
+
+  deps:
+    name: Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+      - name: Install cargo-binstall
+        uses: taiki-e/install-action@cargo-binstall
+      - name: Install tools
+        run: cargo binstall --no-confirm cargo-udeps
+      - name: Check unused dependencies
+        run: cargo udeps 
