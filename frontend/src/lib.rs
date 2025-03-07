@@ -38,7 +38,7 @@ use client_side_prover::{
   supernova::TrivialCircuit,
   traits::{Engine, Group},
 };
-use ff::Field;
+use halo2curves::ff::Field;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 

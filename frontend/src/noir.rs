@@ -26,7 +26,7 @@ use acvm::{
 use ark_bn254::Fr;
 use bellpepper_core::{num::AllocatedNum, ConstraintSystem, LinearCombination, SynthesisError};
 use client_side_prover::supernova::StepCircuit;
-use ff::PrimeField;
+use halo2curves::ff::PrimeField;
 use noirc_abi::{input_parser::InputValue, Abi, AbiType, InputMap};
 use tracing::{error, trace};
 

@@ -1,44 +1,28 @@
 [package]
-name   ="client-side-prover-frontend"
-version="0.1.0"
-edition="2021"
+name = "client-side-prover-frontend"
+version = "0.1.0"
+edition = "2021"
 
 [dependencies]
-client-side-prover={ path="../prover" }
-
-serde          ={ workspace=true }
-serde_json     ={ workspace=true }
-thiserror      ={ workspace=true }
-tracing        ={ workspace=true }
-hex            ={ workspace=true }
-ff             ={ workspace=true }
-bellpepper-core={ workspace=true }
-halo2curves    ={ workspace=true }
-
-byteorder ={ workspace=true }
-num-bigint={ workspace=true }
-itertools ={ workspace=true }
-bincode   ={ workspace=true }
+client-side-prover = { path = "../prover" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+bellpepper-core = { workspace = true }
+halo2curves = { workspace = true }
 
 # noir
-acvm     ={ git="https://github.com/noir-lang/noir", rev="v1.0.0-beta.2" }
-noirc_abi={ git="https://github.com/noir-lang/noir", rev="v1.0.0-beta.2" }
-ark-bn254="0.5"
-
-#- Wasm target configuration ----------------------------------------------------------------------#
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-serde-wasm-bindgen  ="0.6.5"
-wasm-bindgen        ="0.2.87"
-js-sys              ="0.3.64"
-wasm-bindgen-futures="0.4.37"
+acvm = { git = "https://github.com/noir-lang/noir", rev = "v1.0.0-beta.2" }
+noirc_abi = { git = "https://github.com/noir-lang/noir", rev = "v1.0.0-beta.2" }
+ark-bn254 = "0.5"
 
 [dev-dependencies]
-tracing-test               ={ workspace=true }
-tempdir                    ="0.3.7"
-tokio                      ={ version="1.43", features=["full"] }
-client-side-prover-frontend={ path=".", features=["demo"] }
-tempfile                   ="3.17"
+tracing-test = { workspace = true }
+tempdir = "0.3.7"
+client-side-prover-frontend = { path = ".", features = ["demo"] }
+tempfile = "3.17"
+bincode = { workspace = true }
 
 [features]
-verify-steps=[]
-demo        =[]
+demo = []

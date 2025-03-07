@@ -344,12 +344,13 @@ fn prove_single_step<M: Memory>(
   z0_primary: &[Scalar],
   z0_secondary: &[grumpkin::Fr],
 ) -> Result<Option<RecursiveSNARK<E1>>, FrontendError> {
-  let program_counter = match &recursive_snark {
-    None => setup.switchboard.initial_circuit_index(),
-    Some(snark) =>
+  let program_counter = recursive_snark.as_ref().map_or_else(
+    || setup.switchboard.initial_circuit_index(),
+    |snark| {
       u32::from_le_bytes(snark.program_counter().to_repr().as_ref()[0..4].try_into().unwrap())
-        as usize,
-  };
+        as usize
+    },
+  );
 
   debug!("Program counter = {:?}", program_counter);
 

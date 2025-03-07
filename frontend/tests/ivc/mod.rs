@@ -5,8 +5,7 @@ use client_side_prover_frontend::{
   setup::Setup,
   Scalar,
 };
-use ff::Field;
-use halo2curves::grumpkin;
+use halo2curves::{ff::Field, grumpkin};
 use noirc_abi::{input_parser::InputValue, InputMap};
 
 use super::*;
