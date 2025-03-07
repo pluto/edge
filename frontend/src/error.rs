@@ -21,10 +21,6 @@ pub enum FrontendError {
   #[error(transparent)]
   Io(#[from] std::io::Error),
 
-  /// The error is a custom error with a message
-  #[error("Other error: {0}")]
-  Other(String),
-
   /// The error is a `client_side_prover::errors::NovaError`
   #[error(transparent)]
   Nova(#[from] client_side_prover::errors::NovaError),
