@@ -1,12 +1,5 @@
-# Client Side Prover
-
-> [!NOTE]
-> This repository is a fork of the original hosted at [https://github.com/microsoft/nova](https://github.com/microsoft/nova) and also forked from [https://github.com/argumentcomputer/arecibo](https://github.com/argumentcomputer/arecibo).
-
-## Project Structure
-The repository contains several key components:
-- `client-side-prover-frontend`: Frontend adapters for both Noir and Circom
-- `client-side-prover`: Backend implementation of the client side prover
+# Edge
+> Enabling private computation on the edge.
 
 ## Features
 - Supernova NIVC folding scheme implementation
@@ -14,7 +7,28 @@ The repository contains several key components:
 - Client-side proving capabilities through WebAssembly
 - Recursive proof generation and verification
 
+## Project Structure
+The repository contains several key components:
+- `edge-frontend`: Frontend adapters for both Noir and Circom
+- `edge-prover`: Backend implementation of the client side prover
+
 ## Usage
 This repository and its crates are **not** production ready. Do not use them in production. No audits have been done and none are planned.
  
 With that said, work has been done to make the implementation here work with an offline setup phase. Therefore, this can be used run proofs on an edge device which can later be verified by a remote server.
+
+## Contributing
+
+We welcome contributions to our open-source projects. If you want to contribute or follow along with contributor discussions, join our main [Telegram channel](https://t.me/pluto_xyz/1) to chat about Pluto's development.
+
+Our contributor guidelines can be found in our [CONTRIBUTING.md](https://github.com/pluto/.github/blob/main/profile/CONTRIBUTING.md).
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the Apache-2.0 license, shall be licensed as above, without any additional terms or conditions.
+
+## License
+
+This project is licensed under the Apache V2 License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgements
+> [!NOTE]
+> This repository is a fork of the original hosted at [https://github.com/microsoft/nova](https://github.com/microsoft/nova) and also forked from [https://github.com/argumentcomputer/arecibo](https://github.com/argumentcomputer/arecibo).
