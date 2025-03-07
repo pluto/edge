@@ -35,7 +35,6 @@
 use edge_prover::{
   provider::GrumpkinEngine,
   spartan::batched::BatchedRelaxedR1CSSNARK,
-  supernova::TrivialCircuit,
   traits::{Engine, Group},
 };
 use halo2curves::ff::Field;
