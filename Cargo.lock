@@ -546,78 +546,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1462739cb27611015575c0c11df5df7601141071f07518d56fcc1be504cbec97"
 
 [[package]]
-name = "client-side-prover"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bellpepper",
- "bellpepper-core",
- "bincode",
- "bitvec",
- "byteorder",
- "cfg-if",
- "criterion",
- "digest",
- "expect-test",
- "ff 0.13.0",
- "flate2",
- "generic-array 1.1.0",
- "getrandom 0.2.15",
- "group 0.13.0",
- "grumpkin-msm",
- "halo2curves",
- "handlebars",
- "hex",
- "itertools 0.13.0",
- "neptune",
- "num-bigint 0.4.6",
- "num-integer",
- "num-traits",
- "once_cell",
- "pairing",
- "proptest",
- "rand 0.8.5",
- "rand_chacha",
- "rand_core 0.6.4",
- "rayon",
- "rayon-scan",
- "ref-cast",
- "serde",
- "serde_json",
- "sha2",
- "sha3",
- "static_assertions",
- "subtle",
- "tap",
- "thiserror",
- "tracing",
- "tracing-subscriber",
- "tracing-test",
- "tracing-texray",
-]
-
-[[package]]
-name = "client-side-prover-frontend"
-version = "0.1.0"
-dependencies = [
- "acvm",
- "ark-bn254",
- "bellpepper-core",
- "bincode",
- "client-side-prover",
- "client-side-prover-frontend",
- "halo2curves",
- "noirc_abi",
- "serde",
- "serde_json",
- "tempdir",
- "tempfile",
- "thiserror",
- "tracing",
- "tracing-test",
-]
-
-[[package]]
 name = "const-oid"
 version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -773,6 +701,78 @@ dependencies = [
  "elliptic-curve",
  "rfc6979",
  "signature",
+]
+
+[[package]]
+name = "edge-frontend"
+version = "0.1.0"
+dependencies = [
+ "acvm",
+ "ark-bn254",
+ "bellpepper-core",
+ "bincode",
+ "edge-frontend",
+ "edge-prover",
+ "halo2curves",
+ "noirc_abi",
+ "serde",
+ "serde_json",
+ "tempdir",
+ "tempfile",
+ "thiserror",
+ "tracing",
+ "tracing-test",
+]
+
+[[package]]
+name = "edge-prover"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bellpepper",
+ "bellpepper-core",
+ "bincode",
+ "bitvec",
+ "byteorder",
+ "cfg-if",
+ "criterion",
+ "digest",
+ "expect-test",
+ "ff 0.13.0",
+ "flate2",
+ "generic-array 1.1.0",
+ "getrandom 0.2.15",
+ "group 0.13.0",
+ "grumpkin-msm",
+ "halo2curves",
+ "handlebars",
+ "hex",
+ "itertools 0.13.0",
+ "neptune",
+ "num-bigint 0.4.6",
+ "num-integer",
+ "num-traits",
+ "once_cell",
+ "pairing",
+ "proptest",
+ "rand 0.8.5",
+ "rand_chacha",
+ "rand_core 0.6.4",
+ "rayon",
+ "rayon-scan",
+ "ref-cast",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sha3",
+ "static_assertions",
+ "subtle",
+ "tap",
+ "thiserror",
+ "tracing",
+ "tracing-subscriber",
+ "tracing-test",
+ "tracing-texray",
 ]
 
 [[package]]

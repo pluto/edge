@@ -1,7 +1,7 @@
 use std::fs;
 
 use acvm::acir::acir_field::GenericFieldElement;
-use client_side_prover_frontend::{
+use edge_frontend::{
   demo,
   program::{self, Configuration, Switchboard},
   setup::Setup,

@@ -21,15 +21,15 @@ pub enum FrontendError {
   #[error(transparent)]
   Io(#[from] std::io::Error),
 
-  /// The error is a `client_side_prover::errors::NovaError`
+  /// The error is a `edge_prover::errors::NovaError`
   #[error(transparent)]
-  Nova(#[from] client_side_prover::errors::NovaError),
+  Nova(#[from] edge_prover::errors::NovaError),
 
-  /// The error is a `client_side_prover::supernova::error::SuperNovaError`
+  /// The error is a `edge_prover::supernova::error::SuperNovaError`
   #[error(transparent)]
-  SuperNova(#[from] client_side_prover::supernova::error::SuperNovaError),
+  SuperNova(#[from] edge_prover::supernova::error::SuperNovaError),
 
-  /// The error is a [`client_side_prover::fast_serde::SerdeByteError`]
+  /// The error is a [`edge_prover::fast_serde::SerdeByteError`]
   #[error(transparent)]
-  FastSerde(#[from] client_side_prover::fast_serde::SerdeByteError),
+  FastSerde(#[from] edge_prover::fast_serde::SerdeByteError),
 }

@@ -1,10 +1,10 @@
 use acvm::acir::acir_field::GenericFieldElement;
-use client_side_prover::supernova::snark::CompressedSNARK;
-use client_side_prover_frontend::{
+use edge_frontend::{
   program::{compress, run, Switchboard, RAM, ROM},
   setup::Setup,
   Scalar,
 };
+use edge_prover::supernova::snark::CompressedSNARK;
 use halo2curves::{ff::Field, grumpkin};
 use noirc_abi::{input_parser::InputValue, InputMap};
 

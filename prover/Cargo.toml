@@ -1,11 +1,11 @@
 [package]
-name        ="client-side-prover"
+name        ="edge-prover"
 version     ="0.1.0"
 authors     =["Pluto Engineering"]
 edition     ="2021"
 description ="Client side proving"
 readme      ="README.md"
-repository  ="https://github.com/pluto/client-side-prover"
+repository  ="https://github.com/pluto/edge"
 license-file="LICENSE"
 keywords    =["zkSNARKs", "cryptography", "proofs"]
 

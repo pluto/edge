@@ -23,7 +23,7 @@
 //! - [`run`]: Executes a program with the appropriate memory model
 //! - [`compress`]: Compresses a recursive SNARK into a more compact form for verification
 
-use client_side_prover::supernova::{NonUniformCircuit, RecursiveSNARK};
+use edge_prover::supernova::{NonUniformCircuit, RecursiveSNARK};
 use halo2curves::{ff::PrimeField, grumpkin};
 use noirc_abi::InputMap;
 use tracing::trace;

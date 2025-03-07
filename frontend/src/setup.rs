@@ -21,7 +21,7 @@
 
 use std::io::Cursor;
 
-use client_side_prover::{
+use edge_prover::{
   fast_serde::{self, FastSerde, SerdeByteError, SerdeByteTypes},
   supernova::{get_circuit_shapes, snark::CompressedSNARK, PublicParams},
   traits::{snark::default_ck_hint, Dual, Engine},

@@ -1,10 +1,10 @@
 [package]
-name   ="client-side-prover-frontend"
+name   ="edge-frontend"
 version="0.1.0"
 edition="2021"
 
 [dependencies]
-client-side-prover={ path="../prover" }
+edge-prover={ path="../prover" }
 serde             ={ workspace=true }
 serde_json        ={ workspace=true }
 thiserror         ={ workspace=true }
@@ -20,7 +20,7 @@ ark-bn254="0.5"
 [dev-dependencies]
 tracing-test               ={ workspace=true }
 tempdir                    ="0.3.7"
-client-side-prover-frontend={ path=".", features=["demo"] }
+edge-frontend={ path=".", features=["demo"] }
 tempfile                   ="3.17"
 bincode                    ={ workspace=true }
 
