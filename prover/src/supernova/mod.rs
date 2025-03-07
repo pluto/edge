@@ -584,14 +584,12 @@ where E1: CurveCycleEquipped
     }
 
     // check the arity of all the primary circuits match the initial input length
-    // pp.circuit_shapes.iter().try_for_each(|circuit| {
-    //     if circuit.F_arity != z0_primary.len() {
-    //         return Err(SuperNovaError::NovaError(
-    //             NovaError::InvalidStepOutputLength,
-    //         ));
-    //     }
-    //     Ok(())
-    // })?;
+    pp.circuit_shapes.iter().try_for_each(|circuit| {
+      if circuit.F_arity != z0_primary.len() {
+        return Err(SuperNovaError::NovaError(NovaError::InvalidStepOutputLength));
+      }
+      Ok(())
+    })?;
 
     // base case for the primary
     let mut cs_primary = SatisfyingAssignment::<E1>::new();
