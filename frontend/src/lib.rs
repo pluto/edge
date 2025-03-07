@@ -32,7 +32,7 @@
 //! The crate provides demo implementations accessible via the `demo` module when
 //! built with the `demo` feature.
 
-use edge_prover::traits::{Engine, Group};
+use edge_prover::traits::Engine;
 use halo2curves::ff::Field;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
@@ -48,7 +48,7 @@ pub mod setup;
 ///
 /// This type is used for representing field elements in the scalar field
 /// of the primary elliptic curve used in the proof system.
-pub type Scalar = <G1 as Group>::Scalar;
+pub type Scalar = <E1 as Engine>::Scalar;
 
 /// Represents the params needed to create `PublicParams` alongside the
 /// circuits' R1CSs.
@@ -76,10 +76,6 @@ type E1 = edge_prover::provider::Bn256EngineKZG;
 ///
 /// The secondary engine uses the Grumpkin curve, which is cycle-friendly with BN256.
 type E2 = edge_prover::provider::GrumpkinEngine;
-/// Represents the group associated with the first elliptic curve engine.
-///
-/// This group is used for cryptographic operations in the primary curve.
-type G1 = <E1 as Engine>::GE;
 /// Represents the evaluation engine for the first elliptic curve.
 ///
 /// This evaluation engine handles polynomial evaluations for the primary curve.
