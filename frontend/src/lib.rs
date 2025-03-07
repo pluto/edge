@@ -34,7 +34,6 @@
 
 use edge_prover::{
   provider::GrumpkinEngine,
-  spartan::batched::BatchedRelaxedR1CSSNARK,
   traits::{Engine, Group},
 };
 use halo2curves::ff::Field;
@@ -95,11 +94,11 @@ type EE2 = edge_prover::provider::ipa_pc::EvaluationEngine<E2>;
 /// Represents the SNARK for the first elliptic curve.
 ///
 /// This SNARK implementation is used for generating proofs on the primary curve.
-type S1 = BatchedRelaxedR1CSSNARK<E1, EE1>;
+type S1 = edge_prover::spartan::batched::BatchedRelaxedR1CSSNARK<E1, EE1>;
 /// Represents the SNARK for the second elliptic curve.
 ///
 /// This SNARK implementation is used for generating proofs on the secondary curve.
-type S2 = BatchedRelaxedR1CSSNARK<E2, EE2>;
+type S2 = edge_prover::spartan::batched::BatchedRelaxedR1CSSNARK<E2, EE2>;
 
 #[cfg(any(test, feature = "demo"))]
 /// Demo module providing example Noir programs for testing and demonstration
