@@ -17,7 +17,7 @@
 ## Features
 - Supernova NIVC folding scheme implementation
 - Support for both Noir and Circom circuit frameworks
-- Client-side proving capabilities through WebAssembly
+- Client-side proving capabilities through native ARM & WebAssembly
 - Recursive proof generation and verification
 
 ## Project Structure
