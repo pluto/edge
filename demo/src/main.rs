@@ -7,7 +7,7 @@ use edge_frontend::{
   setup::Setup,
   CompressedSNARK, Scalar,
 };
-use tracing::{debug, info, trace, Level};
+use tracing::{debug, error, info, trace, Level};
 use tracing_subscriber::{fmt, prelude::*, EnvFilter, Layer};
 
 mod counter;
@@ -308,7 +308,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
           Ok(())
         },
         Err(e) => {
-          info!("❌ Proof verification failed: {e}");
+          error!("❌ Proof verification failed: {e}");
           debug!("Verification error details: {:?}", e);
           Err(e.into())
         },
