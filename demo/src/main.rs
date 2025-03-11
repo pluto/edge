@@ -1,11 +1,4 @@
-use std::{
-  fs,
-  path::PathBuf,
-  sync::{
-    atomic::{AtomicUsize, Ordering},
-    Arc, Mutex,
-  },
-};
+use std::{fs, path::PathBuf, sync::atomic::Ordering};
 
 use clap::{Parser, Subcommand};
 use edge_frontend::{
@@ -14,8 +7,10 @@ use edge_frontend::{
   setup::Setup,
   CompressedSNARK, Scalar,
 };
-use tracing::{debug, info, trace, Level, Subscriber};
-use tracing_subscriber::{fmt, prelude::*, registry::LookupSpan, EnvFilter, Layer};
+use tracing::{debug, info, trace, Level};
+use tracing_subscriber::{fmt, prelude::*, EnvFilter, Layer};
+
+mod counter;
 
 /// Creates a Noir program that is the even case of the function in the Collatz conjecture.
 pub fn collatz_even() -> NoirProgram {
@@ -116,21 +111,28 @@ fn setup_logging(verbosity: u8) {
     _ => Level::TRACE,
   };
 
-  // Create a custom filter
-  let filter = EnvFilter::from_default_env()
+  // Create a display filter based on verbosity
+  let display_filter = EnvFilter::from_default_env()
     .add_directive(format!("edge_frontend={}", level).parse().unwrap())
     .add_directive(format!("edge_prover={}", level).parse().unwrap())
     .add_directive(format!("demo={}", level).parse().unwrap());
 
-  // Reset the step counter and sequence
-  STEP_COUNTER.store(0, Ordering::SeqCst);
-  reset_sequence();
+  // Create a separate filter for our counter layer that always captures DEBUG level
+  let counter_filter = EnvFilter::from_default_env()
+    .add_directive("edge_frontend=debug".parse().unwrap())
+    .add_directive("edge_prover=debug".parse().unwrap())
+    .add_directive("demo=debug".parse().unwrap());
 
-  // Set up the subscriber with our custom layer
+  // Reset the step counter and sequence
+  counter::STEP_COUNTER.store(0, Ordering::SeqCst);
+  counter::reset_sequence();
+
+  // Set up the registry with two layers:
+  // 1. A display layer with the user-specified verbosity
+  // 2. A counter layer that always captures DEBUG level events
   let subscriber = tracing_subscriber::registry()
-    .with(fmt::layer().with_target(true))
-    .with(filter)
-    .with(StepCounterLayer);
+    .with(fmt::layer().with_target(true).with_filter(display_filter))
+    .with(counter::StepCounterLayer.with_filter(counter_filter));
 
   // Set as the global default
   let _guard =
@@ -203,22 +205,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
       let psetup = psetup.into_ready(switchboard);
       info!("✅ Prepared setup for proving");
+      trace!("Ready setup details: {:?}", psetup);
 
       // Step 4: Generate the proof
       info!("Generating recursive SNARK (this may take a while)...");
       let recursive_snark = program::run(&psetup)?;
-      let step_count = STEP_COUNTER.load(Ordering::SeqCst);
-      let sequence = get_sequence();
+      let step_count = counter::STEP_COUNTER.load(Ordering::SeqCst);
+      let sequence = counter::get_sequence();
 
       // Format the sequence for display
       let sequence_str = sequence.join(" → ");
       info!("✅ Generated recursive SNARK in {} steps", step_count);
       info!("📊 Collatz sequence: {}", sequence_str);
+      trace!("Recursive SNARK details: {:?}", recursive_snark);
 
       // Step 5: Compress the proof
       info!("Compressing proof (this may take a while)...");
       let compressed_proof = program::compress(&psetup, &recursive_snark)?;
       info!("✅ Compressed the proof");
+      trace!("Compressed proof details: {:?}", compressed_proof);
 
       // Step 6: Serialize and store the proof
       let serialized_proof = bincode::serialize(&compressed_proof)?;
@@ -310,76 +315,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
       }
     },
   }
-}
-
-// Below is a custom layer to count steps just for some additional data.
-// See this [site](https://www.dcode.fr/collatz-conjecture?__r=1.235e0b9644d4c82309944796365cca7b) for values of the Collatz stopping times and sequences.
-// None of this is required for the IVC system, it is just for additional data for fun!
-
-// Create a static counter for steps
-static STEP_COUNTER: AtomicUsize = AtomicUsize::new(0);
-
-// Create a thread-safe vector to store the sequence
-type SequenceType = Arc<Mutex<Vec<String>>>;
-thread_local! {
-    static SEQUENCE: SequenceType = Arc::new(Mutex::new(Vec::new()));
-}
-
-/// A custom layer to count steps and track sequence
-struct StepCounterLayer;
-
-impl<S> Layer<S> for StepCounterLayer
-where S: Subscriber + for<'a> LookupSpan<'a>
-{
-  fn on_event(&self, event: &tracing::Event<'_>, _ctx: tracing_subscriber::layer::Context<'_, S>) {
-    // Extract the message from the event
-    let mut message = String::new();
-    let mut visitor = MessageVisitor(&mut message);
-    event.record(&mut visitor);
-
-    // Count steps based on the message
-    if message.contains("Proving single step") {
-      STEP_COUNTER.fetch_add(1, Ordering::SeqCst);
-    }
-
-    // Track program counter for sequence
-    if message.contains("Program counter = 0") {
-      SEQUENCE.with(|seq| {
-        let mut seq = seq.lock().unwrap();
-        seq.push("even".to_string());
-      });
-    } else if message.contains("Program counter = 1") {
-      SEQUENCE.with(|seq| {
-        let mut seq = seq.lock().unwrap();
-        seq.push("odd".to_string());
-      });
-    }
-  }
-}
-
-// Helper to extract message from event
-struct MessageVisitor<'a>(&'a mut String);
-
-impl<'a> tracing::field::Visit for MessageVisitor<'a> {
-  fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
-    if field.name() == "message" {
-      self.0.push_str(&format!("{:?}", value));
-    }
-  }
-}
-
-// Helper to get the current sequence
-fn get_sequence() -> Vec<String> {
-  SEQUENCE.with(|seq| {
-    let seq = seq.lock().unwrap();
-    seq.clone()
-  })
-}
-
-// Helper to reset the sequence
-fn reset_sequence() {
-  SEQUENCE.with(|seq| {
-    let mut seq = seq.lock().unwrap();
-    seq.clear();
-  });
 }
