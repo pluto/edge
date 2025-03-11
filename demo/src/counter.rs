@@ -1,14 +1,10 @@
-use std::{
-  fs,
-  path::PathBuf,
-  sync::{
-    atomic::{AtomicUsize, Ordering},
-    Arc, Mutex,
-  },
+use std::sync::{
+  atomic::{AtomicUsize, Ordering},
+  Arc, Mutex,
 };
 
-use tracing::{debug, info, trace, Level, Subscriber};
-use tracing_subscriber::{fmt, prelude::*, registry::LookupSpan, EnvFilter, Layer};
+use tracing::Subscriber;
+use tracing_subscriber::{registry::LookupSpan, Layer};
 
 // Create a static counter for steps
 pub static STEP_COUNTER: AtomicUsize = AtomicUsize::new(0);
