@@ -16,15 +16,16 @@
 
 ## Features
 - Supernova NIVC folding scheme implementation
-- Support for both Noir and Circom circuit frameworks
-- Client-side proving capabilities through native ARM & WebAssembly
-- Recursive proof generation and verification
+- Support for Noir circuit DSL
+- Client-side proving capabilities through native x86, aarch64, and WASM
+- End-to-end proof setup, running, and verification
 
 ## Project Structure
 The repository contains several key components:
 - `edge-prover`: Backend implementation of Supernova NIVC folding scheme
 - `edge-frontend`: Frontend adapters for Noir to use `edge-prover`
 - `demo`: A demo application for the `edge-frontend` and `edge-prover`
+- `nivc`: A Noir package to use with the NIVC folding scheme
 
 ### Prerequisites
 Before running the demo, ensure you have:
@@ -83,9 +84,21 @@ ERROR demo: ❌ Proof verification failed: NovaError
 Error: NovaError(ProofVerifyError)
 ```
 
-
 ## Usage
-This repository and its crates are **not** production ready. Do not use them in production. No audits have been done and none are planned.
+You can use the `edge-frontend` crate to use the NIVC folding scheme for your own Noir programs. In your `Cargo.toml`, add the following:
+```
+[dependencies]
+edge-frontend = { git = "https://github.com/pluto/edge", branch = "main" }
+```
+and then add the following to your `Nargo.toml`:
+```
+[dependencies]
+nivc = { tag = "v0.1.0", git = "https://github.com/pluto/edge" }
+```
+The `edge-frontend` assumes that the structure provided by the `nivc` crate is used. Please see the `demo` crate for an example of how to use the `edge-frontend` with the `nivc` crate and the `examples` directory for examples of Noir programs that use the `nivc` crate inside of other tests (see `frontend/tests/nivc/`).
+
+> [!WARNING]
+> This repository and its crates are **not** production ready. Do not use them in production. No audits have been done and none are planned.
  
 With that said, work has been done to make the implementation here work with an offline setup phase. Therefore, this can be used run proofs on an edge device which can later be verified by a remote server.
 
