@@ -25,6 +25,7 @@ The repository contains several key components:
 - `edge-prover`: Backend implementation of Supernova NIVC folding scheme
 - `edge-frontend`: Frontend adapters for Noir to use `edge-prover`
 - `demo`: A demo application for the `edge-frontend` and `edge-prover`
+- `nivc`: A Noir package to use with the NIVC folding scheme
 
 ### Prerequisites
 Before running the demo, ensure you have:
@@ -83,9 +84,20 @@ ERROR demo: ❌ Proof verification failed: NovaError
 Error: NovaError(ProofVerifyError)
 ```
 
-
 ## Usage
-This repository and its crates are **not** production ready. Do not use them in production. No audits have been done and none are planned.
+You can use the `edge-frontend` crate to use the NIVC folding scheme for your own Noir programs. In your `Cargo.toml`, add the following:
+```
+[dependencies]
+edge-frontend = { git = "https://github.com/pluto/edge", branch = "main" }
+```
+and then add the following to your `Nargo.toml`:
+```
+[dependencies]
+nivc = { tag = "v0.1.0", git = "https://github.com/pluto/edge" }
+```
+
+> [!WARNING]
+> This repository and its crates are **not** production ready. Do not use them in production. No audits have been done and none are planned.
  
 With that said, work has been done to make the implementation here work with an offline setup phase. Therefore, this can be used run proofs on an edge device which can later be verified by a remote server.
 
