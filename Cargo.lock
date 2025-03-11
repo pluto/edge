@@ -736,6 +736,7 @@ dependencies = [
  "bincode",
  "clap",
  "edge-frontend",
+ "serde_json",
  "tracing",
  "tracing-subscriber",
 ]

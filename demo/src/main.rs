@@ -1,4 +1,11 @@
-use std::{fs, path::PathBuf};
+use std::{
+  fs,
+  path::PathBuf,
+  sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc, Mutex,
+  },
+};
 
 use clap::{Parser, Subcommand};
 use edge_frontend::{
@@ -7,8 +14,8 @@ use edge_frontend::{
   setup::Setup,
   CompressedSNARK, Scalar,
 };
-use tracing::{debug, info, trace, Level};
-use tracing_subscriber::{fmt, prelude::*, EnvFilter};
+use tracing::{debug, info, trace, Level, Subscriber};
+use tracing_subscriber::{fmt, prelude::*, registry::LookupSpan, EnvFilter, Layer};
 
 /// Creates a Noir program that is the even case of the function in the Collatz conjecture.
 pub fn collatz_even() -> NoirProgram {
@@ -56,7 +63,7 @@ pub fn collatz_odd() -> NoirProgram {
 #[command(author, version, about = "Demo application for edge-frontend", long_about = None)]
 struct Cli {
   /// Verbosity level (-v = info, -vv = debug, -vvv = trace)
-  #[arg( short,long, action = clap::ArgAction::Count, global = true)]
+  #[arg(short, long, action = clap::ArgAction::Count, global = true)]
   verbose: u8,
 
   #[command(subcommand)]
@@ -115,8 +122,19 @@ fn setup_logging(verbosity: u8) {
     .add_directive(format!("edge_prover={}", level).parse().unwrap())
     .add_directive(format!("demo={}", level).parse().unwrap());
 
-  // Set up the subscriber
-  tracing_subscriber::registry().with(fmt::layer().with_target(true)).with(filter).init();
+  // Reset the step counter and sequence
+  STEP_COUNTER.store(0, Ordering::SeqCst);
+  reset_sequence();
+
+  // Set up the subscriber with our custom layer
+  let subscriber = tracing_subscriber::registry()
+    .with(fmt::layer().with_target(true))
+    .with(filter)
+    .with(StepCounterLayer);
+
+  // Set as the global default
+  let _guard =
+    tracing::subscriber::set_global_default(subscriber).expect("Failed to set tracing subscriber");
 
   debug!("Logging initialized at level: {:?}", level);
 }
@@ -185,25 +203,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
       let psetup = psetup.into_ready(switchboard);
       info!("✅ Prepared setup for proving");
-      trace!("Ready setup details: {:?}", psetup);
 
       // Step 4: Generate the proof
       info!("Generating recursive SNARK (this may take a while)...");
       let recursive_snark = program::run(&psetup)?;
-      info!("✅ Generated recursive SNARK");
-      trace!("Recursive SNARK details: {:?}", recursive_snark);
+      let step_count = STEP_COUNTER.load(Ordering::SeqCst);
+      let sequence = get_sequence();
+
+      // Format the sequence for display
+      let sequence_str = sequence.join(" → ");
+      info!("✅ Generated recursive SNARK in {} steps", step_count);
+      info!("📊 Collatz sequence: {}", sequence_str);
 
       // Step 5: Compress the proof
       info!("Compressing proof (this may take a while)...");
       let compressed_proof = program::compress(&psetup, &recursive_snark)?;
       info!("✅ Compressed the proof");
-      trace!("Compressed proof details: {:?}", compressed_proof);
 
       // Step 6: Serialize and store the proof
       let serialized_proof = bincode::serialize(&compressed_proof)?;
       fs::write(&output, &serialized_proof)?;
       info!("✅ Saved proof to file: {}", output.display());
       debug!("Proof size: {} bytes", serialized_proof.len());
+
+      // Save step count and sequence to a metadata file
+      let metadata = serde_json::json!({
+          "input": input,
+          "steps": step_count,
+          "sequence": sequence
+      });
+      let metadata_path = output
+        .with_file_name(format!("{}.meta.json", output.file_stem().unwrap().to_string_lossy()));
+      fs::write(&metadata_path, serde_json::to_string_pretty(&metadata)?)?;
+      info!("✅ Saved metadata to file: {}", metadata_path.display());
 
       Ok(())
     },
@@ -224,6 +256,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
       info!("✅ Loaded proof from file: {}", proof.display());
       trace!("Compressed proof details: {:?}", compressed_proof);
 
+      // Try to load metadata if available
+      let metadata_path =
+        proof.with_file_name(format!("{}.meta.json", proof.file_stem().unwrap().to_string_lossy()));
+      if metadata_path.exists() {
+        let metadata_str = fs::read_to_string(&metadata_path)?;
+        let metadata: serde_json::Value = serde_json::from_str(&metadata_str)?;
+
+        if let Some(steps) = metadata["steps"].as_u64() {
+          info!("📊 Proof steps: {}", steps);
+        }
+
+        if let Some(sequence) = metadata["sequence"].as_array() {
+          let sequence_str: Vec<String> =
+            sequence.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect();
+          info!("📊 Collatz sequence: {}", sequence_str.join(" → "));
+        }
+      }
+
       // Step 3: Create demo programs (needed for switchboard)
       let collatz_even = collatz_even();
       let collatz_odd = collatz_odd();
@@ -243,6 +293,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
       // Step 6: Verify the proof
       let z0_primary = [Scalar::from(input)];
+      debug!("z0_primary: {:?}", z0_primary);
+      debug!("z0_secondary: {:?}", Z0_SECONDARY);
 
       info!("Verifying proof...");
       match compressed_proof.verify(&vsetup.params, &vk, &z0_primary, Z0_SECONDARY) {
@@ -258,4 +310,76 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
       }
     },
   }
+}
+
+// Below is a custom layer to count steps just for some additional data.
+// See this [site](https://www.dcode.fr/collatz-conjecture?__r=1.235e0b9644d4c82309944796365cca7b) for values of the Collatz stopping times and sequences.
+// None of this is required for the IVC system, it is just for additional data for fun!
+
+// Create a static counter for steps
+static STEP_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+// Create a thread-safe vector to store the sequence
+type SequenceType = Arc<Mutex<Vec<String>>>;
+thread_local! {
+    static SEQUENCE: SequenceType = Arc::new(Mutex::new(Vec::new()));
+}
+
+/// A custom layer to count steps and track sequence
+struct StepCounterLayer;
+
+impl<S> Layer<S> for StepCounterLayer
+where S: Subscriber + for<'a> LookupSpan<'a>
+{
+  fn on_event(&self, event: &tracing::Event<'_>, _ctx: tracing_subscriber::layer::Context<'_, S>) {
+    // Extract the message from the event
+    let mut message = String::new();
+    let mut visitor = MessageVisitor(&mut message);
+    event.record(&mut visitor);
+
+    // Count steps based on the message
+    if message.contains("Proving single step") {
+      STEP_COUNTER.fetch_add(1, Ordering::SeqCst);
+    }
+
+    // Track program counter for sequence
+    if message.contains("Program counter = 0") {
+      SEQUENCE.with(|seq| {
+        let mut seq = seq.lock().unwrap();
+        seq.push("even".to_string());
+      });
+    } else if message.contains("Program counter = 1") {
+      SEQUENCE.with(|seq| {
+        let mut seq = seq.lock().unwrap();
+        seq.push("odd".to_string());
+      });
+    }
+  }
+}
+
+// Helper to extract message from event
+struct MessageVisitor<'a>(&'a mut String);
+
+impl<'a> tracing::field::Visit for MessageVisitor<'a> {
+  fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
+    if field.name() == "message" {
+      self.0.push_str(&format!("{:?}", value));
+    }
+  }
+}
+
+// Helper to get the current sequence
+fn get_sequence() -> Vec<String> {
+  SEQUENCE.with(|seq| {
+    let seq = seq.lock().unwrap();
+    seq.clone()
+  })
+}
+
+// Helper to reset the sequence
+fn reset_sequence() {
+  SEQUENCE.with(|seq| {
+    let mut seq = seq.lock().unwrap();
+    seq.clear();
+  });
 }
