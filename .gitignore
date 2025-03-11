@@ -1,2 +1,4 @@
 target/*
 .DS_Store
+*.bytes
+proof.meta.json

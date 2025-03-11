@@ -19,7 +19,7 @@
 //! The crate uses several cryptographic backends:
 //! - Primary curve: bn254 (also known as BN256)
 //! - Secondary curve: Grumpkin
-//! - Proof systems: SuperNova, Spartan R1CS SNARKs
+//! - Proof systems: ``SuperNova``, Spartan R1CS SNARKs
 //!
 //! ## Memory Models
 //!
