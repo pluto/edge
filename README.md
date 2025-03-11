@@ -16,9 +16,9 @@
 
 ## Features
 - Supernova NIVC folding scheme implementation
-- Support for both Noir and Circom circuit frameworks
-- Client-side proving capabilities through native ARM & WebAssembly
-- Recursive proof generation and verification
+- Support for Noir circuit DSL
+- Client-side proving capabilities through native x86, aarch64, and WASM
+- End-to-end proof setup, running, and verification
 
 ## Project Structure
 The repository contains several key components:
