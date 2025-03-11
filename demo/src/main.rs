@@ -7,6 +7,8 @@ use edge_frontend::{
   setup::Setup,
   CompressedSNARK, Scalar,
 };
+use tracing::{debug, info, trace, Level};
+use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 /// Creates a Noir program that is the even case of the function in the Collatz conjecture.
 pub fn collatz_even() -> NoirProgram {
@@ -53,6 +55,10 @@ pub fn collatz_odd() -> NoirProgram {
 #[derive(Parser)]
 #[command(author, version, about = "Demo application for edge-frontend", long_about = None)]
 struct Cli {
+  /// Verbosity level (-v = info, -vv = debug, -vvv = trace)
+  #[arg( short,long, action = clap::ArgAction::Count, global = true)]
+  verbose: u8,
+
   #[command(subcommand)]
   command: Commands,
 }
@@ -95,102 +101,158 @@ enum Commands {
   },
 }
 
+fn setup_logging(verbosity: u8) {
+  let level = match verbosity {
+    0 => Level::WARN,
+    1 => Level::INFO,
+    2 => Level::DEBUG,
+    _ => Level::TRACE,
+  };
+
+  // Create a custom filter
+  let filter = EnvFilter::from_default_env()
+    .add_directive(format!("edge_frontend={}", level).parse().unwrap())
+    .add_directive(format!("edge_prover={}", level).parse().unwrap())
+    .add_directive(format!("demo={}", level).parse().unwrap());
+
+  // Set up the subscriber
+  tracing_subscriber::registry().with(fmt::layer().with_target(true)).with(filter).init();
+
+  debug!("Logging initialized at level: {:?}", level);
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
   let cli = Cli::parse();
 
+  // Set up logging based on verbosity
+  setup_logging(cli.verbose);
+
   match cli.command {
     Commands::Setup { output } => {
-      println!("🔧 Running offline setup phase...");
+      info!("🔧 Running offline setup phase...");
 
       // Step 1: Create demo programs
       let collatz_even = collatz_even();
       let collatz_odd = collatz_odd();
-      println!("✅ Created demo programs");
+      info!("✅ Created demo programs");
+      debug!("Program details - even: {:?}, odd: {:?}", collatz_even, collatz_odd);
 
       // Step 2: Create switchboard
       let switchboard = Switchboard::<Configuration>::new(vec![collatz_even, collatz_odd]);
-      println!("✅ Created switchboard");
+      info!("✅ Created switchboard");
+      trace!("Switchboard details: {:?}", switchboard);
 
       // Step 3: Initialize the setup
       let setup = Setup::new(switchboard)?;
-      println!("✅ Initialized setup");
+      info!("✅ Initialized setup");
+      trace!("Setup details: {:?}", setup);
 
       // Step 4: Save the setup to a file
       setup.store_file(&output)?;
-      println!("✅ Saved setup to file: {}", output.display());
+      info!("✅ Saved setup to file: {}", output.display());
 
       Ok(())
     },
     Commands::Prove { input, setup, output } => {
-      println!("🔍 Running proving phase...");
+      info!("🔍 Running proving phase...");
+      debug!("Input value: {}", input);
 
       // Step 1: Read the setup from the file
       let psetup = Setup::load_file(&setup)?;
-      println!("✅ Loaded setup from file: {}", setup.display());
+      info!("✅ Loaded setup from file: {}", setup.display());
+      trace!("Setup details: {:?}", psetup);
 
       // Step 2: Create demo programs
       let collatz_even = collatz_even();
       let collatz_odd = collatz_odd();
-      println!("✅ Created demo programs");
+      info!("✅ Created demo programs");
+      debug!("Program details - even: {:?}, odd: {:?}", collatz_even, collatz_odd);
 
       // Step 3: Create and prepare the switchboard for proving
+      let program_index = (input % 2) as usize;
+      debug!(
+        "Using program index: {} ({})",
+        program_index,
+        if program_index == 0 { "even" } else { "odd" }
+      );
+
       let switchboard = Switchboard::<RAM>::new(
         vec![collatz_even, collatz_odd],
         vec![Scalar::from(input)],
-        (input % 2) as usize,
+        program_index,
       );
+      trace!("Switchboard details: {:?}", switchboard);
+
       let psetup = psetup.into_ready(switchboard);
-      println!("✅ Prepared setup for proving");
+      info!("✅ Prepared setup for proving");
+      trace!("Ready setup details: {:?}", psetup);
 
       // Step 4: Generate the proof
+      info!("Generating recursive SNARK (this may take a while)...");
       let recursive_snark = program::run(&psetup)?;
-      println!("✅ Generated recursive SNARK");
+      info!("✅ Generated recursive SNARK");
+      trace!("Recursive SNARK details: {:?}", recursive_snark);
 
       // Step 5: Compress the proof
+      info!("Compressing proof (this may take a while)...");
       let compressed_proof = program::compress(&psetup, &recursive_snark)?;
-      println!("✅ Compressed the proof");
+      info!("✅ Compressed the proof");
+      trace!("Compressed proof details: {:?}", compressed_proof);
 
       // Step 6: Serialize and store the proof
       let serialized_proof = bincode::serialize(&compressed_proof)?;
       fs::write(&output, &serialized_proof)?;
-      println!("✅ Saved proof to file: {}", output.display());
+      info!("✅ Saved proof to file: {}", output.display());
+      debug!("Proof size: {} bytes", serialized_proof.len());
 
       Ok(())
     },
     Commands::Verify { input, setup, proof } => {
-      println!("🔐 Running verification phase...");
+      info!("🔐 Running verification phase...");
+      debug!("Input value: {}", input);
 
       // Step 1: Read the setup from the file
       let vsetup = Setup::load_file(&setup)?;
-      println!("✅ Loaded setup from file: {}", setup.display());
+      info!("✅ Loaded setup from file: {}", setup.display());
+      trace!("Setup details: {:?}", vsetup);
 
       // Step 2: Read and deserialize the proof
       let proof_bytes = fs::read(&proof)?;
+      debug!("Proof size: {} bytes", proof_bytes.len());
+
       let compressed_proof: CompressedSNARK = bincode::deserialize(&proof_bytes)?;
-      println!("✅ Loaded proof from file: {}", proof.display());
+      info!("✅ Loaded proof from file: {}", proof.display());
+      trace!("Compressed proof details: {:?}", compressed_proof);
 
       // Step 3: Create demo programs (needed for switchboard)
       let collatz_even = collatz_even();
       let collatz_odd = collatz_odd();
+      debug!("Program details - even: {:?}, odd: {:?}", collatz_even, collatz_odd);
 
       // Step 4: Create and prepare the switchboard for verification
       let vswitchboard = Switchboard::<Configuration>::new(vec![collatz_even, collatz_odd]);
+      trace!("Switchboard details: {:?}", vswitchboard);
+
       let vsetup = vsetup.into_ready(vswitchboard);
+      trace!("Ready setup details: {:?}", vsetup);
 
       // Step 5: Get the verifier key
       let vk = vsetup.verifier_key()?;
-      println!("✅ Prepared verification key");
+      info!("✅ Prepared verification key");
+      trace!("Verifier key details: {:?}", vk);
 
       // Step 6: Verify the proof
       let z0_primary = [Scalar::from(input)];
 
+      info!("Verifying proof...");
       match compressed_proof.verify(&vsetup.params, &vk, &z0_primary, Z0_SECONDARY) {
         Ok(_) => {
-          println!("✅ Proof verification successful!");
+          info!("✅ Proof verification successful!");
           Ok(())
         },
         Err(e) => {
-          println!("❌ Proof verification failed: {e}");
+          info!("❌ Proof verification failed: {e}");
+          debug!("Verification error details: {:?}", e);
           Err(e.into())
         },
       }
