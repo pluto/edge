@@ -1,9 +1,0 @@
-[package]
-authors         =["Colin Roberts"]
-compiler_version=">=0.36.0"
-name            ="poseidon"
-type            ="bin"
-version         ="0.1.0"
-
-[dependencies]
-nivc={ path="../../nivc" }

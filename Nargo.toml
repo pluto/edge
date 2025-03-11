@@ -1,11 +1,6 @@
-[workspace]
-members=[
-  "nivc",
-  "examples/add_external",
-  "examples/square_zeroth",
-  "examples/swap_memory",
-  "examples/poseidon",
-  "examples/basic",
-  "examples/collatz_even",
-  "examples/collatz_odd",
-]
+[package]
+authors         =["Colin Roberts"]
+compiler_version=">=0.36.0"
+name            ="nivc"
+type            ="lib"
+version         ="0.1.0"

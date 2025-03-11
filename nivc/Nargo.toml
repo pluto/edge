@@ -1,6 +1,0 @@
-[package]
-authors         =["Colin Roberts"]
-compiler_version=">=0.36.0"
-name            ="nivc"
-type            ="lib"
-version         ="0.1.0"
