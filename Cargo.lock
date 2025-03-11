@@ -736,6 +736,8 @@ dependencies = [
  "bincode",
  "clap",
  "edge-frontend",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

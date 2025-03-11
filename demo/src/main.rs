@@ -2,12 +2,53 @@ use std::{fs, path::PathBuf};
 
 use clap::{Parser, Subcommand};
 use edge_frontend::{
-  demo,
-  demo::{collatz_even, collatz_odd},
+  noir::NoirProgram,
   program::{self, Configuration, Switchboard, RAM, Z0_SECONDARY},
   setup::Setup,
   CompressedSNARK, Scalar,
 };
+
+/// Creates a Noir program that is the even case of the function in the Collatz conjecture.
+pub fn collatz_even() -> NoirProgram {
+  let path = std::path::PathBuf::from("target/collatz_even.json");
+
+  // Get the current working directory
+  let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+  let absolute_path = current_dir.join(&path);
+
+  match std::fs::read(&path) {
+    Ok(bytecode) => NoirProgram::new(&bytecode),
+    Err(e) => {
+      panic!(
+        "Failed to read Noir program file.\nRelative path: '{}'\nAbsolute path: '{}'\nError: {}",
+        path.display(),
+        absolute_path.display(),
+        e
+      );
+    },
+  }
+}
+
+/// Creates a Noir program that is the odd case of the function in the Collatz conjecture.
+pub fn collatz_odd() -> NoirProgram {
+  let path = std::path::PathBuf::from("target/collatz_odd.json");
+
+  // Get the current working directory
+  let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+  let absolute_path = current_dir.join(&path);
+
+  match std::fs::read(&path) {
+    Ok(bytecode) => NoirProgram::new(&bytecode),
+    Err(e) => {
+      panic!(
+        "Failed to read Noir program file.\nRelative path: '{}'\nAbsolute path: '{}'\nError: {}",
+        path.display(),
+        absolute_path.display(),
+        e
+      );
+    },
+  }
+}
 
 #[derive(Parser)]
 #[command(author, version, about = "Demo application for edge-frontend", long_about = None)]
@@ -129,12 +170,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
       println!("✅ Loaded proof from file: {}", proof.display());
 
       // Step 3: Create demo programs (needed for switchboard)
-      let swap_memory_program = demo::swap_memory();
-      let square_program = demo::square_zeroth();
+      let collatz_even = collatz_even();
+      let collatz_odd = collatz_odd();
 
       // Step 4: Create and prepare the switchboard for verification
-      let vswitchboard =
-        Switchboard::<Configuration>::new(vec![swap_memory_program, square_program]);
+      let vswitchboard = Switchboard::<Configuration>::new(vec![collatz_even, collatz_odd]);
       let vsetup = vsetup.into_ready(vswitchboard);
 
       // Step 5: Get the verifier key
@@ -142,11 +182,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
       println!("✅ Prepared verification key");
 
       // Step 6: Verify the proof
-      println!("⚠️  Note: In a real verification scenario, z0 values would be provided separately");
-      println!(
-        "⚠️  For this demo, we're using placeholder values which will cause verification to fail"
-      );
-
       let z0_primary = [Scalar::from(input)];
 
       match compressed_proof.verify(&vsetup.params, &vk, &z0_primary, Z0_SECONDARY) {

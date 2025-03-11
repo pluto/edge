@@ -34,6 +34,7 @@ use crate::{
   setup::{Ready, Setup},
 };
 
+/// Input for the secondary circuit in the NIVC system for all proofs.
 pub const Z0_SECONDARY: &[grumpkin::Fr] = &[grumpkin::Fr::ZERO];
 
 /// Trait for memory models used in the NIVC system
