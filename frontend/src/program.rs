@@ -34,6 +34,8 @@ use crate::{
   setup::{Ready, Setup},
 };
 
+pub const Z0_SECONDARY: &[grumpkin::Fr] = &[grumpkin::Fr::ZERO];
+
 /// Trait for memory models used in the NIVC system
 ///
 /// This trait is sealed, meaning it can only be implemented by the types in this crate
@@ -288,7 +290,6 @@ pub fn run_rom(setup: &Setup<Ready<ROM>>) -> Result<RecursiveSNARK<E1>, Frontend
   info!("Starting SuperNova program with ROM memory model...");
 
   let z0_primary = &setup.switchboard.public_input;
-  let z0_secondary = &[grumpkin::Fr::ZERO];
   let time = std::time::Instant::now();
 
   let mut recursive_snark: Option<RecursiveSNARK<E1>> = None;
@@ -299,7 +300,7 @@ pub fn run_rom(setup: &Setup<Ready<ROM>>) -> Result<RecursiveSNARK<E1>, Frontend
 
     // TODO: We should not clone the witness here
     recursive_snark =
-      prove_single_step(setup, recursive_snark, Some(witness.clone()), z0_primary, z0_secondary)?;
+      prove_single_step(setup, recursive_snark, Some(witness.clone()), z0_primary, Z0_SECONDARY)?;
   }
 
   trace!("Recursive loop of `program::run()` elapsed: {:?}", time.elapsed());
@@ -326,7 +327,6 @@ pub fn run_ram(setup: &Setup<Ready<RAM>>) -> Result<RecursiveSNARK<E1>, Frontend
   info!("Starting SuperNova program with RAM memory model...");
 
   let z0_primary = &setup.switchboard.public_input;
-  let z0_secondary = &[grumpkin::Fr::ZERO];
   let time = std::time::Instant::now();
 
   let mut recursive_snark: Option<RecursiveSNARK<E1>> = None;
@@ -347,7 +347,7 @@ pub fn run_ram(setup: &Setup<Ready<RAM>>) -> Result<RecursiveSNARK<E1>, Frontend
       recursive_snark,
       None, // RAM doesn't use predefined witness values
       z0_primary,
-      z0_secondary,
+      Z0_SECONDARY,
     )?;
   }
 

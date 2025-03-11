@@ -1,13 +1,12 @@
 use std::fs;
 
-use acvm::acir::acir_field::GenericFieldElement;
 use edge_frontend::{
   demo,
+  noir::{GenericFieldElement, InputMap, InputValue},
   program::{self, Configuration, Switchboard},
   setup::Setup,
   CompressedSNARK, Scalar,
 };
-use noirc_abi::{input_parser::InputValue, InputMap};
 use tempfile::tempdir;
 
 use super::*;

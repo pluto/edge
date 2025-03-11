@@ -13,9 +13,9 @@
 
 use std::collections::{BTreeMap, HashMap};
 
+pub use acvm::acir::acir_field::GenericFieldElement;
 use acvm::{
   acir::{
-    acir_field::GenericFieldElement,
     circuit::{brillig::BrilligBytecode, Circuit, Opcode, Program},
     native_types::{Witness, WitnessMap},
   },
@@ -27,7 +27,8 @@ use ark_bn254::Fr;
 use bellpepper_core::{num::AllocatedNum, ConstraintSystem, LinearCombination, SynthesisError};
 use edge_prover::supernova::StepCircuit;
 use halo2curves::ff::PrimeField;
-use noirc_abi::{input_parser::InputValue, Abi, AbiType, InputMap};
+pub use noirc_abi::{input_parser::InputValue, InputMap};
+use noirc_abi::{Abi, AbiType};
 use tracing::{error, trace};
 
 use super::*;

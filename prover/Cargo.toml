@@ -40,11 +40,12 @@ rand             ={ workspace=true }
 ref-cast         ={ workspace=true }
 static_assertions={ workspace=true }
 rayon-scan       ={ workspace=true }
+grumpkin-msm      ={ workspace=true }
 
-[target.'cfg(any(target_arch = "x86_64", target_arch = "aarch64"))'.dependencies]
+# [target.'cfg(any(target_arch = "x86_64", target_arch = "aarch64"))'.dependencies]
 # grumpkin-msm has been patched to support MSMs for the pasta curve cycle
 # see: https://github.com/argumentcomputer/grumpkin-msm/pull/3
-grumpkin-msm={ workspace=true }
+# grumpkin-msm={ workspace=true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom={ workspace=true }

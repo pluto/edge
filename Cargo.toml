@@ -1,5 +1,5 @@
 [workspace]
-members =["prover", "frontend"]
+members =["prover", "frontend","demo"]
 resolver="2"
 
 [workspace.dependencies]
@@ -34,9 +34,6 @@ ref-cast         ="1.0.20"                                                      
 static_assertions="1.1.0"
 rayon-scan       ="0.1.0"
 hex              ="0.4.3"
-
-# grumpkin-msm has been patched to support MSMs for the pasta curve cycle
-# see: https://github.com/argumentcomputer/grumpkin-msm/pull/3
 grumpkin-msm={ git="https://github.com/argumentcomputer/grumpkin-msm", branch="dev" }
 
 # wasm32 dependencies
