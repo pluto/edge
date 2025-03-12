@@ -65,3 +65,7 @@
 - name: "security 🔒"
   color: "d93f0b"
   description: "Security-related changes or fixes"
+
+- name: "bounty 🏴‍☠️"
+  color: "fef2c0"
+  description: "Closing this rewards a bounty!"
