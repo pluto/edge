@@ -10,6 +10,12 @@ repository  ="https://github.com/pluto/edge"
 version     ="0.1.0"
 
 [dependencies]
+ark-ec = { workspace=true }
+ark-ff = { workspace=true }
+ark-r1cs-std = { workspace=true }
+ark-relations = { workspace=true }
+ark-serialize = { workspace=true }
+ark-bn254 = { workspace=true }
 bellpepper       ={ workspace=true }
 bellpepper-core  ={ workspace=true }
 bincode          ={ workspace=true }

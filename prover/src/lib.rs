@@ -21,11 +21,17 @@ pub mod supernova;
 
 use std::sync::Arc;
 
-use bellpepper_core::{ConstraintSystem, SynthesisError};
+use ark_r1cs_std::{
+  prelude::*, R1CSVar,
+  alloc::{AllocVar, AllocationMode}
+};
+use ark_relations::{
+  r1cs::{ConstraintSystem, ConstraintSystemRef, LinearCombination, SynthesisError},
+};
 use circuit::{NovaAugmentedCircuit, NovaAugmentedCircuitInputs, NovaAugmentedCircuitParams};
 use constants::{BN_LIMB_WIDTH, BN_N_LIMBS, NUM_FE_WITHOUT_IO_FOR_CRHF, NUM_HASH_BITS};
 use errors::NovaError;
-use ff::Field;
+use ark_ff::Field;
 use gadgets::scalar_as_base;
 use nifs::NIFS;
 use once_cell::sync::OnceCell;

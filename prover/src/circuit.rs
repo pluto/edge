@@ -6,12 +6,14 @@
 //! the running instance
 
 use bellpepper::gadgets::{boolean_utils::conditionally_select_slice, Assignment};
-use bellpepper_core::{
-  boolean::{AllocatedBit, Boolean},
-  num::AllocatedNum,
-  ConstraintSystem, SynthesisError,
+use ark_r1cs_std::{
+  prelude::*, R1CSVar,
+  alloc::{AllocVar, AllocationMode}
 };
-use ff::Field;
+use ark_relations::{
+  r1cs::{ConstraintSystem, ConstraintSystemRef, LinearCombination, SynthesisError},
+};
+use ark_ff::Field;
 use serde::{Deserialize, Serialize};
 
 use crate::{
