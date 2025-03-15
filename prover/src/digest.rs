@@ -1,7 +1,7 @@
 use std::{io, marker::PhantomData};
 
 use bincode::Options;
-use ff::PrimeField;
+use ark_ff::PrimeField;
 use serde::Serialize;
 use sha3::{Digest, Sha3_256};
 

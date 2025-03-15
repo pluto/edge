@@ -3,6 +3,12 @@ members =["prover", "frontend", "demo"]
 resolver="2"
 
 [workspace.dependencies]
+ark-ec = "0.5.0"
+ark-ff = "0.5.0"
+ark-r1cs-std = "0.5.0"
+ark-relations = "0.5.0"
+ark-serialize = "0.5.0"
+ark-bn254 = "0.5.0"
 bellpepper       ={ git="https://github.com/argumentcomputer/bellpepper", branch="dev", default-features=false }
 bellpepper-core  ={ version="0.4.0", default-features=false }
 bincode          ="1.3"
