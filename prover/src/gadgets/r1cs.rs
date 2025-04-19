@@ -132,7 +132,7 @@ impl<E: Engine, const N: usize> AllocatedRelaxedR1CSInstance<E, N> {
 
     // X is allocated and in the honest prover case set to zero
     // If the prover is malicious, it can set to arbitrary values, but the resulting
-    // relaxed R1CS instance with the the checked default values of W, E, and u must
+    // relaxed R1CS instance with the checked default values of W, E, and u must
     // still be satisfying
 
     let X = (0..N)
