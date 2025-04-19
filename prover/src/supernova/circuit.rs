@@ -53,7 +53,7 @@ use crate::{
 /// A helper trait for a step of the incremental computation for `SuperNova`
 /// (i.e., circuit for F) -- to be implemented by applications.
 pub trait StepCircuit<F: PrimeField>: Send + Sync + Clone {
-  /// Return the the number of inputs or outputs of each step
+  /// Return the number of inputs or outputs of each step
   /// (this method is called only at circuit synthesis time)
   /// `synthesize` and `output` methods are expected to take as
   /// input a vector of size equal to arity and output a vector of size equal
